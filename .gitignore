@@ -1,0 +1,33 @@
+# Gradle
+.gradle/
+build/
+src/main/generated/
+
+# IntelliJ IDEA
+.idea/
+*.iml
+*.iws
+*.ipr
+out/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+logs/
+
+# Environment
+.env
+application-local.yml
+application-prod.yml
+
+# Compiled class files
+*.class
+
+# JAR files
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
