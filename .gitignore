@@ -31,3 +31,4 @@ application-prod.yml
 # JAR files
 *.jar
 !gradle/wrapper/gradle-wrapper.jar
+.claude/
