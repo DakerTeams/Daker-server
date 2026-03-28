@@ -3,14 +3,14 @@ version: '3.8'
 services:
   mysql:
     image: mysql:8.0
-    container_name: hackhub-mysql
+    container_name: daker-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: hackhub
-      MYSQL_USER: hackhub
-      MYSQL_PASSWORD: hackhub1234
+      MYSQL_DATABASE: daker
+      MYSQL_USER: daker
+      MYSQL_PASSWORD: daker1234
     ports:
-      - "3306:3306"
+      - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     command:
@@ -24,9 +24,9 @@ services:
 
   redis:
     image: redis:7.2
-    container_name: hackhub-redis
+    container_name: daker-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
