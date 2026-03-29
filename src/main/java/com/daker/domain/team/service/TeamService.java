@@ -82,6 +82,7 @@ public class TeamService {
         // 팀장을 팀원으로 자동 추가
         TeamMember leaderMember = TeamMember.builder().team(team).user(leader).build();
         teamMemberRepository.save(leaderMember);
+        team.getMembers().add(leaderMember);
 
         // 해커톤 참가 신청 자동 처리
         HackathonRegistration registration = HackathonRegistration.builder()
