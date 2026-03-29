@@ -33,9 +33,9 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ApiResponse<Void> logout(@AuthenticationPrincipal Long userId) {
+    public ApiResponse<java.util.Map<String, String>> logout(@AuthenticationPrincipal Long userId) {
         authService.logout(userId);
-        return ApiResponse.ok(null);
+        return ApiResponse.ok(java.util.Map.of("message", "로그아웃 되었습니다."));
     }
 
     @GetMapping("/me")

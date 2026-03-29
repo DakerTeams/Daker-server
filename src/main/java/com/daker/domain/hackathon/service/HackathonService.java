@@ -63,15 +63,12 @@ public class HackathonService {
         hackathonRepository.findByIdAndDeletedFalse(hackathonId)
                 .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
 
-        Team myTeam = teamRepository.findAllByUserId(userId).stream()
+        return teamRepository.findAllByUserId(userId).stream()
                 .filter(t -> t.getHackathon().getId().equals(hackathonId))
                 .findFirst()
-                .orElseThrow(() -> new CustomException(ErrorCode.REGISTRATION_NOT_FOUND));
-
-        HackathonRegistration registration = registrationRepository.findByTeamId(myTeam.getId())
-                .orElseThrow(() -> new CustomException(ErrorCode.REGISTRATION_NOT_FOUND));
-
-        return new RegistrationStatusResponse(registration);
+                .flatMap(t -> registrationRepository.findByTeamId(t.getId()))
+                .map(RegistrationStatusResponse::new)
+                .orElse(RegistrationStatusResponse.notRegistered());
     }
 
     @Transactional
@@ -113,12 +110,12 @@ public class HackathonService {
                 .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
 
         List<Team> teams = teamRepository.findAllByHackathonId(hackathonId);
-        boolean isEnded = hackathon.isEnded();
 
-        List<LeaderboardResponse.LeaderboardTeamInfo> teamInfos = teams.stream()
-                .map(team -> new LeaderboardResponse.LeaderboardTeamInfo(team, isEnded ? null : null))
+        // TODO: 제출 도메인 개발 후 submitted 여부 및 score 연결
+        List<LeaderboardResponse.LeaderboardTeamInfo> items = teams.stream()
+                .map(team -> new LeaderboardResponse.LeaderboardTeamInfo(team, null, null, false))
                 .toList();
 
-        return new LeaderboardResponse(isEnded, teamInfos);
+        return new LeaderboardResponse(hackathon.getScoreType().name(), items);
     }
 }

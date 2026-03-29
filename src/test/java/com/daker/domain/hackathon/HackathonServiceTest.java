@@ -203,16 +203,17 @@ class HackathonServiceTest {
     }
 
     @Test
-    @DisplayName("해당 해커톤에 팀이 없으면 등록 상태 조회 예외")
-    void getRegistrationStatus_teamNotFound() {
+    @DisplayName("해당 해커톤에 팀이 없으면 미신청 상태 반환")
+    void getRegistrationStatus_notRegistered() {
         Hackathon h = mockOpenHackathon();
         given(hackathonRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(h));
         given(teamRepository.findAllByUserId(1L)).willReturn(List.of());
 
-        assertThatThrownBy(() -> hackathonService.getRegistrationStatus(1L, 1L))
-                .isInstanceOf(CustomException.class)
-                .extracting(e -> ((CustomException) e).getErrorCode())
-                .isEqualTo(ErrorCode.REGISTRATION_NOT_FOUND);
+        RegistrationStatusResponse response = hackathonService.getRegistrationStatus(1L, 1L);
+
+        assertThat(response.isRegistered()).isFalse();
+        assertThat(response.getRegistrationId()).isNull();
+        assertThat(response.getTeamId()).isNull();
     }
 
     // -------------------------------------------------------------------------
@@ -269,8 +270,8 @@ class HackathonServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("진행 중인 해커톤 리더보드 조회 - 점수 비공개")
-    void getLeaderboard_ongoing() {
+    @DisplayName("리더보드 조회 - 미제출 팀 포함")
+    void getLeaderboard_notSubmitted() {
         Hackathon h = mockOpenHackathon();
         User leader = mockUser(1L);
         Team team = mockTeam(1L, h, leader);
@@ -280,23 +281,21 @@ class HackathonServiceTest {
 
         LeaderboardResponse response = hackathonService.getLeaderboard(1L);
 
-        assertThat(response.isPublic_()).isFalse();
-        assertThat(response.getTeams()).hasSize(1);
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).isSubmitted()).isFalse();
+        assertThat(response.getItems().get(0).getScore()).isNull();
     }
 
     @Test
-    @DisplayName("종료된 해커톤 리더보드 조회 - 점수 공개")
-    void getLeaderboard_ended() {
-        Hackathon h = mockEndedHackathon();
-        User leader = mockUser(1L);
-        Team team = mockTeam(1L, h, leader);
+    @DisplayName("리더보드 조회 - scoreType 포함")
+    void getLeaderboard_scoreType() {
+        Hackathon h = mockOpenHackathon();
+        given(hackathonRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(h));
+        given(teamRepository.findAllByHackathonId(1L)).willReturn(List.of());
 
-        given(hackathonRepository.findByIdAndDeletedFalse(2L)).willReturn(Optional.of(h));
-        given(teamRepository.findAllByHackathonId(2L)).willReturn(List.of(team));
+        LeaderboardResponse response = hackathonService.getLeaderboard(1L);
 
-        LeaderboardResponse response = hackathonService.getLeaderboard(2L);
-
-        assertThat(response.isPublic_()).isTrue();
+        assertThat(response.getScoreType()).isEqualTo("SCORE");
     }
 
     @Test
