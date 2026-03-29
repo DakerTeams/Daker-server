@@ -60,12 +60,12 @@ public class TeamController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<Void> deleteTeam(
+    public ApiResponse<java.util.Map<String, String>> deleteTeam(
             @PathVariable Long id,
             @AuthenticationPrincipal Long userId
     ) {
         teamService.deleteTeam(id, userId);
-        return ApiResponse.ok(null);
+        return ApiResponse.ok(java.util.Map.of("message", "팀 모집글이 삭제되었습니다."));
     }
 
     @PostMapping("/{id}/applications")

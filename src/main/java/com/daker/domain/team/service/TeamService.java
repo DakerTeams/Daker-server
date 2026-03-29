@@ -120,6 +120,8 @@ public class TeamService {
             throw new CustomException(ErrorCode.TEAM_APPLICATION_CLOSED);
         }
 
+        teamApplicationRepository.deleteAllByTeamId(teamId);
+
         registrationRepository.findByTeamId(teamId)
                 .ifPresent(registrationRepository::delete);
 
