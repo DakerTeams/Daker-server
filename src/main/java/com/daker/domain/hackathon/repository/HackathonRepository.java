@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
@@ -30,4 +31,6 @@ public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
 
     // 어드민 전체 목록 (삭제 포함)
     Page<Hackathon> findAll(Pageable pageable);
+
+    long countByCreatedAtAfter(LocalDateTime dateTime);
 }

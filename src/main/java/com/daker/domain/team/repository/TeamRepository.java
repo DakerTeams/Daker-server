@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface TeamRepository extends JpaRepository<Team, Long> {
@@ -33,4 +34,6 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
     List<Team> findAllByHackathonId(Long hackathonId);
 
     boolean existsByHackathonIdAndLeaderId(Long hackathonId, Long leaderId);
+
+    long countByCreatedAtAfter(LocalDateTime dateTime);
 }

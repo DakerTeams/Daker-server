@@ -26,6 +26,10 @@ public enum ErrorCode {
     // 유저 (USER)
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
     ADMIN_ONLY(HttpStatus.FORBIDDEN, "관리자 권한이 필요합니다."),
+    NOT_A_JUDGE(HttpStatus.BAD_REQUEST, "해당 사용자는 심사위원이 아닙니다."),
+    ALREADY_A_JUDGE(HttpStatus.CONFLICT, "이미 심사위원입니다."),
+    JUDGE_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "이미 해당 해커톤에 배정된 심사위원입니다."),
+    JUDGE_NOT_ASSIGNED(HttpStatus.NOT_FOUND, "해당 해커톤에 배정된 심사위원이 아닙니다."),
 
     // 해커톤 (HACKATHON)
     HACKATHON_NOT_FOUND(HttpStatus.NOT_FOUND, "해커톤을 찾을 수 없습니다."),
