@@ -2,6 +2,7 @@ package com.daker.domain.team.dto;
 
 import com.daker.domain.team.domain.Team;
 import com.daker.domain.team.domain.TeamMember;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
 import java.util.List;
@@ -13,6 +14,7 @@ public class TeamDetailResponse {
     private final Long hackathonId;
     private final String name;
     private final String description;
+    @JsonProperty("isOpen")
     private final boolean isOpen;
     private final TeamSummaryResponse.LeaderInfo leader;
     private final List<MemberInfo> members;

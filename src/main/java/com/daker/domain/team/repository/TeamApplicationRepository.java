@@ -14,4 +14,6 @@ public interface TeamApplicationRepository extends JpaRepository<TeamApplication
     Optional<TeamApplication> findByTeamIdAndUserId(Long teamId, Long userId);
 
     boolean existsByTeamIdAndUserIdAndStatus(Long teamId, Long userId, ApplicationStatus status);
+
+    void deleteAllByTeamId(Long teamId);
 }

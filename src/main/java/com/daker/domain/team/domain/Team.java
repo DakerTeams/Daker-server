@@ -71,9 +71,9 @@ public class Team {
         return this.members.size() >= maxTeamSize;
     }
 
-    public void update(String name, String description, boolean isOpen) {
-        this.name = name;
-        this.description = description;
-        this.isOpen = isOpen;
+    public void update(String name, String description, Boolean isOpen) {
+        if (name != null) this.name = name;
+        if (description != null) this.description = description;
+        if (isOpen != null) this.isOpen = isOpen;
     }
 }
