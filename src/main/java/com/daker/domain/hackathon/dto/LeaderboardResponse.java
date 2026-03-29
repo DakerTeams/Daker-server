@@ -8,26 +8,26 @@ import java.util.List;
 @Getter
 public class LeaderboardResponse {
 
-    private final boolean public_;
-    private final List<LeaderboardTeamInfo> teams;
+    private final String scoreType;
+    private final List<LeaderboardTeamInfo> items;
 
-    public LeaderboardResponse(boolean isPublic, List<LeaderboardTeamInfo> teams) {
-        this.public_ = isPublic;
-        this.teams = teams;
+    public LeaderboardResponse(String scoreType, List<LeaderboardTeamInfo> items) {
+        this.scoreType = scoreType;
+        this.items = items;
     }
 
     @Getter
     public static class LeaderboardTeamInfo {
-        private final Long teamId;
+        private final Integer rank;
         private final String teamName;
-        private final int memberCount;
-        private final Double totalScore; // 공개 전 null
+        private final Double score;
+        private final boolean submitted;
 
-        public LeaderboardTeamInfo(Team team, Double totalScore) {
-            this.teamId = team.getId();
+        public LeaderboardTeamInfo(Team team, Integer rank, Double score, boolean submitted) {
+            this.rank = rank;
             this.teamName = team.getName();
-            this.memberCount = team.getMembers().size();
-            this.totalScore = totalScore;
+            this.score = score;
+            this.submitted = submitted;
         }
     }
 }

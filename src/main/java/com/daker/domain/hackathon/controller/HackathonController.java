@@ -45,12 +45,12 @@ public class HackathonController {
     }
 
     @DeleteMapping("/{id}/register")
-    public ApiResponse<Void> cancelRegistration(
+    public ApiResponse<java.util.Map<String, String>> cancelRegistration(
             @PathVariable Long id,
             @AuthenticationPrincipal Long userId
     ) {
         hackathonService.cancelRegistration(id, userId);
-        return ApiResponse.ok(null);
+        return ApiResponse.ok(java.util.Map.of("message", "참가 신청이 취소되었습니다."));
     }
 
     @GetMapping("/{id}/teams")
