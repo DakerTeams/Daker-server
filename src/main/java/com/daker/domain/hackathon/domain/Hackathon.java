@@ -27,8 +27,12 @@ public class Hackathon {
     @Column(nullable = false)
     private String title;
 
+    private String summary;
+
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    private String thumbnailUrl;
 
     @Column(nullable = false)
     private String organizer;
@@ -53,8 +57,20 @@ public class Hackathon {
     @Column(nullable = false)
     private LocalDateTime registrationEndDate;
 
+    private LocalDateTime submissionDeadlineAt;
+
+    private LocalDateTime closedAt;
+
     @Column(nullable = false)
     private int maxTeamSize;
+
+    private Integer maxParticipants;
+
+    @Column(nullable = false)
+    private boolean campEnabled = false;
+
+    @Column(nullable = false)
+    private boolean allowSolo = false;
 
     @Column(nullable = false)
     private boolean deleted = false;
@@ -71,6 +87,12 @@ public class Hackathon {
     @OneToMany(mappedBy = "hackathon", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Criteria> criteriaList = new ArrayList<>();
 
+    @OneToMany(mappedBy = "hackathon", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<HackathonNotice> notices = new ArrayList<>();
+
+    @OneToMany(mappedBy = "hackathon", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<HackathonLink> links = new ArrayList<>();
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -80,13 +102,17 @@ public class Hackathon {
     private LocalDateTime updatedAt;
 
     @Builder
-    public Hackathon(String title, String description, String organizer,
-                     HackathonStatus status, ScoreType scoreType,
+    public Hackathon(String title, String summary, String description, String thumbnailUrl,
+                     String organizer, HackathonStatus status, ScoreType scoreType,
                      LocalDateTime startDate, LocalDateTime endDate,
                      LocalDateTime registrationStartDate, LocalDateTime registrationEndDate,
-                     int maxTeamSize) {
+                     LocalDateTime submissionDeadlineAt,
+                     int maxTeamSize, Integer maxParticipants,
+                     boolean campEnabled, boolean allowSolo) {
         this.title = title;
+        this.summary = summary;
         this.description = description;
+        this.thumbnailUrl = thumbnailUrl;
         this.organizer = organizer;
         this.status = status;
         this.scoreType = scoreType;
@@ -94,7 +120,11 @@ public class Hackathon {
         this.endDate = endDate;
         this.registrationStartDate = registrationStartDate;
         this.registrationEndDate = registrationEndDate;
+        this.submissionDeadlineAt = submissionDeadlineAt;
         this.maxTeamSize = maxTeamSize;
+        this.maxParticipants = maxParticipants;
+        this.campEnabled = campEnabled;
+        this.allowSolo = allowSolo;
     }
 
     public boolean isRegistrationOpen() {
@@ -106,8 +136,35 @@ public class Hackathon {
         return LocalDateTime.now().isAfter(endDate);
     }
 
+    public void update(String title, String summary, String description, String thumbnailUrl,
+                       String organizer, ScoreType scoreType,
+                       LocalDateTime startDate, LocalDateTime endDate,
+                       LocalDateTime registrationStartDate, LocalDateTime registrationEndDate,
+                       LocalDateTime submissionDeadlineAt,
+                       int maxTeamSize, Integer maxParticipants,
+                       boolean campEnabled, boolean allowSolo) {
+        this.title = title;
+        this.summary = summary;
+        this.description = description;
+        this.thumbnailUrl = thumbnailUrl;
+        this.organizer = organizer;
+        this.scoreType = scoreType;
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.registrationStartDate = registrationStartDate;
+        this.registrationEndDate = registrationEndDate;
+        this.submissionDeadlineAt = submissionDeadlineAt;
+        this.maxTeamSize = maxTeamSize;
+        this.maxParticipants = maxParticipants;
+        this.campEnabled = campEnabled;
+        this.allowSolo = allowSolo;
+    }
+
     public void updateStatus(HackathonStatus status) {
         this.status = status;
+        if (status == HackathonStatus.CLOSED) {
+            this.closedAt = LocalDateTime.now();
+        }
     }
 
     public void softDelete() {

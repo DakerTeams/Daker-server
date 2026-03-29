@@ -1,4 +1,4 @@
-package com.daker.domain.user.dto;
+package com.daker.domain.admin.dto;
 
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
@@ -7,17 +7,19 @@ import lombok.Getter;
 import java.time.LocalDateTime;
 
 @Getter
-public class RoleUpdateResponse {
+public class AdminUserResponse {
 
     private final Long userId;
     private final String nickname;
+    private final String email;
     private final Role role;
-    private final LocalDateTime updatedAt;
+    private final LocalDateTime createdAt;
 
-    public RoleUpdateResponse(User user) {
+    public AdminUserResponse(User user) {
         this.userId = user.getId();
         this.nickname = user.getNickname();
+        this.email = user.getEmail();
         this.role = user.getRole();
-        this.updatedAt = user.getUpdatedAt();
+        this.createdAt = user.getCreatedAt();
     }
 }
