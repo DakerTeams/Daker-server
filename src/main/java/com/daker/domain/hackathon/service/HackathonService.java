@@ -72,6 +72,45 @@ public class HackathonService {
     }
 
     @Transactional
+    public RegistrationStatusResponse register(Long hackathonId, Long userId, RegistrationRequest request) {
+        Hackathon hackathon = hackathonRepository.findByIdAndDeletedFalse(hackathonId)
+                .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
+
+        if (!hackathon.isRegistrationOpen()) {
+            throw new CustomException(ErrorCode.REGISTRATION_PERIOD_INVALID);
+        }
+
+        Team team = teamRepository.findById(request.getTeamId())
+                .orElseThrow(() -> new CustomException(ErrorCode.TEAM_NOT_FOUND));
+
+        if (!team.isLeader(userId)) {
+            throw new CustomException(ErrorCode.NOT_TEAM_LEADER);
+        }
+
+        if (registrationRepository.existsByHackathonIdAndTeamId(hackathonId, team.getId())) {
+            throw new CustomException(ErrorCode.ALREADY_APPLIED);
+        }
+
+        // 독립 팀인 경우 해커톤 연결
+        if (team.getHackathon() == null) {
+            // 해당 해커톤에 이미 다른 팀으로 참여 중인지 확인
+            boolean alreadyInHackathon = teamMemberRepository.existsByUserIdAndHackathonId(userId, hackathonId);
+            if (alreadyInHackathon) {
+                throw new CustomException(ErrorCode.TEAM_ALREADY_EXISTS);
+            }
+            team.linkHackathon(hackathon);
+        }
+
+        HackathonRegistration registration = HackathonRegistration.builder()
+                .hackathon(hackathon)
+                .team(team)
+                .build();
+        registrationRepository.save(registration);
+
+        return new RegistrationStatusResponse(registration);
+    }
+
+    @Transactional
     public void cancelRegistration(Long hackathonId, Long userId) {
         Hackathon hackathon = hackathonRepository.findByIdAndDeletedFalse(hackathonId)
                 .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));

@@ -30,26 +30,47 @@ public class TeamApplication {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Column(columnDefinition = "TEXT")
+    private String message;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ApplicationStatus status;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "processed_by_user_id")
+    private User processedBy;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    private LocalDateTime processedAt;
+
+    private LocalDateTime deletedAt;
+
     @Builder
-    public TeamApplication(Team team, User user) {
+    public TeamApplication(Team team, User user, String message) {
         this.team = team;
         this.user = user;
+        this.message = message;
         this.status = ApplicationStatus.PENDING;
     }
 
-    public void accept() {
+    public void accept(User processedBy) {
         this.status = ApplicationStatus.ACCEPTED;
+        this.processedBy = processedBy;
+        this.processedAt = LocalDateTime.now();
     }
 
-    public void reject() {
+    public void reject(User processedBy) {
         this.status = ApplicationStatus.REJECTED;
+        this.processedBy = processedBy;
+        this.processedAt = LocalDateTime.now();
+    }
+
+    public void cancel() {
+        this.status = ApplicationStatus.CANCELED;
+        this.deletedAt = LocalDateTime.now();
     }
 }
