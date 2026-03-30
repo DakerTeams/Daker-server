@@ -3,6 +3,7 @@ package com.daker.domain.hackathon.controller;
 import com.daker.domain.hackathon.domain.HackathonStatus;
 import com.daker.domain.hackathon.dto.*;
 import com.daker.domain.hackathon.service.HackathonService;
+import jakarta.validation.Valid;
 import com.daker.domain.team.dto.TeamSummaryResponse;
 import com.daker.domain.team.service.TeamService;
 import com.daker.global.response.ApiResponse;
@@ -34,6 +35,15 @@ public class HackathonController {
     @GetMapping("/{id}")
     public ApiResponse<HackathonDetailResponse> getHackathon(@PathVariable Long id) {
         return ApiResponse.ok(hackathonService.getHackathon(id));
+    }
+
+    @PostMapping("/{id}/register")
+    public ApiResponse<RegistrationStatusResponse> register(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody RegistrationRequest request
+    ) {
+        return ApiResponse.ok(hackathonService.register(id, userId, request));
     }
 
     @GetMapping("/{id}/register")

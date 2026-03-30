@@ -54,42 +54,52 @@ public class TeamService {
 
     @Transactional
     public TeamDetailResponse createTeam(TeamCreateRequest request, Long userId) {
-        Hackathon hackathon = hackathonRepository.findByIdAndDeletedFalse(request.getHackathonId())
-                .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
+        Hackathon hackathon = null;
 
-        if (!hackathon.isRegistrationOpen()) {
-            throw new CustomException(ErrorCode.REGISTRATION_PERIOD_INVALID);
-        }
+        if (request.getHackathonId() != null) {
+            hackathon = hackathonRepository.findByIdAndDeletedFalse(request.getHackathonId())
+                    .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
 
-        // 해당 해커톤에 이미 팀이 있는지 확인
-        if (teamMemberRepository.existsByUserIdAndHackathonId(userId, hackathon.getId())) {
-            throw new CustomException(ErrorCode.TEAM_ALREADY_EXISTS);
+            if (!hackathon.isRegistrationOpen()) {
+                throw new CustomException(ErrorCode.REGISTRATION_PERIOD_INVALID);
+            }
+
+            // 해당 해커톤에 이미 팀이 있는지 확인
+            if (teamMemberRepository.existsByUserIdAndHackathonId(userId, hackathon.getId())) {
+                throw new CustomException(ErrorCode.TEAM_ALREADY_EXISTS);
+            }
         }
 
         User leader = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        int defaultMaxMemberCount = hackathon != null ? hackathon.getMaxTeamSize() : 5;
 
         Team team = Team.builder()
                 .hackathon(hackathon)
                 .leader(leader)
                 .name(request.getName())
                 .description(request.getDescription())
-                .isOpen(request.getIsOpen())
+                .isOpen(request.getIsOpen() != null ? request.getIsOpen() : true)
+                .isPublic(request.getIsPublic() != null ? request.getIsPublic() : true)
+                .maxMemberCount(request.getMaxMemberCount() != null ? request.getMaxMemberCount() : defaultMaxMemberCount)
                 .build();
 
         teamRepository.save(team);
 
         // 팀장을 팀원으로 자동 추가
-        TeamMember leaderMember = TeamMember.builder().team(team).user(leader).build();
+        TeamMember leaderMember = TeamMember.builder().team(team).user(leader).roleType(TeamMemberRole.OWNER).build();
         teamMemberRepository.save(leaderMember);
         team.getMembers().add(leaderMember);
 
-        // 해커톤 참가 신청 자동 처리
-        HackathonRegistration registration = HackathonRegistration.builder()
-                .hackathon(hackathon)
-                .team(team)
-                .build();
-        registrationRepository.save(registration);
+        // 해커톤 연결된 경우 자동 참가 신청
+        if (hackathon != null) {
+            HackathonRegistration registration = HackathonRegistration.builder()
+                    .hackathon(hackathon)
+                    .team(team)
+                    .build();
+            registrationRepository.save(registration);
+        }
 
         return new TeamDetailResponse(team);
     }
@@ -125,7 +135,7 @@ public class TeamService {
         registrationRepository.findByTeamId(teamId)
                 .ifPresent(registrationRepository::delete);
 
-        teamRepository.delete(team);
+        team.softDelete();
     }
 
     @Transactional
@@ -137,7 +147,7 @@ public class TeamService {
             throw new CustomException(ErrorCode.TEAM_APPLICATION_CLOSED);
         }
 
-        if (team.isFull(team.getHackathon().getMaxTeamSize())) {
+        if (team.isFull()) {
             throw new CustomException(ErrorCode.TEAM_FULL);
         }
 
@@ -177,19 +187,23 @@ public class TeamService {
             throw new CustomException(ErrorCode.NOT_TEAM_LEADER);
         }
 
-        if (team.isFull(team.getHackathon().getMaxTeamSize())) {
+        if (team.isFull()) {
             throw new CustomException(ErrorCode.TEAM_FULL);
         }
 
         TeamApplication application = teamApplicationRepository.findById(appId)
                 .orElseThrow(() -> new CustomException(ErrorCode.APPLICATION_NOT_FOUND));
 
+        User processor = userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
         if (request.getStatus() == ApplicationStatus.ACCEPTED) {
-            application.accept();
-            TeamMember newMember = TeamMember.builder().team(team).user(application.getUser()).build();
+            application.accept(processor);
+            TeamMember newMember = TeamMember.builder().team(team).user(application.getUser()).roleType(TeamMemberRole.MEMBER).build();
             teamMemberRepository.save(newMember);
+            team.incrementMemberCount();
         } else {
-            application.reject();
+            application.reject(processor);
         }
 
         return new TeamApplicationResponse(application);

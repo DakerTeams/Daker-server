@@ -30,13 +30,24 @@ public class TeamMember {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private TeamMemberRole roleType = TeamMemberRole.MEMBER;
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime joinedAt;
 
+    private LocalDateTime leftAt;
+
     @Builder
-    public TeamMember(Team team, User user) {
+    public TeamMember(Team team, User user, TeamMemberRole roleType) {
         this.team = team;
         this.user = user;
+        this.roleType = roleType != null ? roleType : TeamMemberRole.MEMBER;
+    }
+
+    public void leave() {
+        this.leftAt = LocalDateTime.now();
     }
 }

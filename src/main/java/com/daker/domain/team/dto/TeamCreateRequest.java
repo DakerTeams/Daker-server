@@ -7,7 +7,6 @@ import lombok.Getter;
 @Getter
 public class TeamCreateRequest {
 
-    @NotNull
     private Long hackathonId;
 
     @NotBlank
@@ -17,4 +16,8 @@ public class TeamCreateRequest {
 
     @NotNull
     private Boolean isOpen;
+
+    private Boolean isPublic;
+
+    private Integer maxMemberCount;
 }

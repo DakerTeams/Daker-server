@@ -14,7 +14,8 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
     // 팀 목록: hackathonId / isOpen / 키워드 필터
     @Query("SELECT t FROM Team t " +
-           "WHERE (:hackathonId IS NULL OR t.hackathon.id = :hackathonId) " +
+           "WHERE t.status != com.daker.domain.team.domain.TeamStatus.DELETED " +
+           "AND (:hackathonId IS NULL OR t.hackathon.id = :hackathonId) " +
            "AND (:isOpen IS NULL OR t.isOpen = :isOpen) " +
            "AND (:q IS NULL OR t.name LIKE %:q%)")
     Page<Team> findAllWithFilters(
