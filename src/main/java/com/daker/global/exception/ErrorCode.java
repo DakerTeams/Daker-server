@@ -52,6 +52,12 @@ public enum ErrorCode {
     JUDGE_ONLY(HttpStatus.FORBIDDEN, "심사위원 권한이 필요합니다."),
     SCORE_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, "해당 해커톤의 심사 방식과 맞지 않는 요청입니다."),
 
+    // 투표 (VOTE)
+    VOTE_PERIOD_INVALID(HttpStatus.BAD_REQUEST, "투표 기간이 아닙니다. (제출 마감 ~ 해커톤 종료일)"),
+    ALREADY_VOTED(HttpStatus.CONFLICT, "이미 투표하셨습니다."),
+    CANNOT_VOTE_OWN_TEAM(HttpStatus.FORBIDDEN, "자신이 속한 팀에는 투표할 수 없습니다."),
+    VOTE_RESULT_NOT_PUBLIC(HttpStatus.FORBIDDEN, "투표 결과는 해커톤 종료 후 공개됩니다."),
+
     // 제출 (SUBMISSION)
     SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "제출물을 찾을 수 없습니다."),
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 확장자입니다. (ZIP, PDF, URL만 허용)"),

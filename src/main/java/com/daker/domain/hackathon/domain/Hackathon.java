@@ -136,6 +136,12 @@ public class Hackathon {
         return LocalDateTime.now().isAfter(endDate);
     }
 
+    public boolean isVotingOpen() {
+        if (submissionDeadlineAt == null) return false;
+        LocalDateTime now = LocalDateTime.now();
+        return now.isAfter(submissionDeadlineAt) && now.isBefore(endDate);
+    }
+
     public void update(String title, String summary, String description, String thumbnailUrl,
                        String organizer, ScoreType scoreType,
                        LocalDateTime startDate, LocalDateTime endDate,

@@ -275,7 +275,7 @@ class TeamServiceTest {
 
         teamService.deleteTeam(1L, 1L);
 
-        verify(teamRepository).delete(team);
+        verify(teamApplicationRepository).deleteAllByTeamId(1L);
     }
 
     @Test
@@ -337,10 +337,9 @@ class TeamServiceTest {
         User leader = mockUser(1L);
         Team team = mockTeam(1L, h, leader);
 
-        // 3명 멤버 추가 → isFull = true
-        for (int i = 0; i < 3; i++) {
-            team.getMembers().add(TeamMember.builder().team(team).user(mockUser((long) (i + 10))).build());
-        }
+        // maxMemberCount=3, currentMemberCount=3 → isFull = true
+        setField(team, "maxMemberCount", 3);
+        setField(team, "currentMemberCount", 3);
 
         given(teamRepository.findById(1L)).willReturn(Optional.of(team));
 
@@ -438,6 +437,7 @@ class TeamServiceTest {
 
         given(teamRepository.findById(1L)).willReturn(Optional.of(team));
         given(teamApplicationRepository.findById(10L)).willReturn(Optional.of(application));
+        given(userRepository.findById(1L)).willReturn(Optional.of(leader));
 
         TeamApplicationResponse response = teamService.decideApplication(1L, 10L, req, 1L);
 
@@ -461,6 +461,7 @@ class TeamServiceTest {
 
         given(teamRepository.findById(1L)).willReturn(Optional.of(team));
         given(teamApplicationRepository.findById(10L)).willReturn(Optional.of(application));
+        given(userRepository.findById(1L)).willReturn(Optional.of(leader));
 
         TeamApplicationResponse response = teamService.decideApplication(1L, 10L, req, 1L);
 
@@ -493,9 +494,9 @@ class TeamServiceTest {
         User leader = mockUser(1L);
         Team team = mockTeam(1L, h, leader);
 
-        for (int i = 0; i < 3; i++) {
-            team.getMembers().add(TeamMember.builder().team(team).user(mockUser((long) (i + 10))).build());
-        }
+        // maxMemberCount=3, currentMemberCount=3 → isFull = true
+        setField(team, "maxMemberCount", 3);
+        setField(team, "currentMemberCount", 3);
 
         ApplicationDecisionRequest req = new ApplicationDecisionRequest();
         setField(req, "status", ApplicationStatus.ACCEPTED);

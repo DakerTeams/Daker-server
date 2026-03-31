@@ -1,6 +1,8 @@
 package com.daker.domain.admin;
 
 import com.daker.domain.admin.dto.*;
+import com.daker.domain.admin.dto.AdminHackathonCloseResponse;
+import com.daker.domain.admin.dto.AdminHackathonUpdateResponse;
 import com.daker.domain.admin.service.AdminService;
 import com.daker.domain.hackathon.domain.*;
 import com.daker.domain.hackathon.repository.*;
@@ -202,9 +204,9 @@ class AdminServiceTest {
 
         given(hackathonRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(h));
 
-        AdminHackathonResponse result = adminService.updateHackathon(1L, req);
+        AdminHackathonUpdateResponse result = adminService.updateHackathon(1L, req);
 
-        assertThat(result.getTitle()).isEqualTo("수정된 제목");
+        assertThat(result.getId()).isEqualTo(1L);
     }
 
     @Test
@@ -228,7 +230,7 @@ class AdminServiceTest {
         Hackathon h = mockHackathon(1L, HackathonStatus.OPEN);
         given(hackathonRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(h));
 
-        AdminHackathonResponse result = adminService.closeHackathon(1L);
+        AdminHackathonCloseResponse result = adminService.closeHackathon(1L);
 
         assertThat(result.getStatus()).isEqualTo(HackathonStatus.CLOSED);
     }
@@ -289,7 +291,7 @@ class AdminServiceTest {
         var result = adminService.getJudges(null, PageRequest.of(0, 20));
 
         assertThat(result.getItems()).hasSize(1);
-        assertThat(result.getItems().get(0).getAssignedHackathonIds()).containsExactly(1L);
+        assertThat(result.getItems().get(0).getAssignedHackathons()).containsExactly("해커톤 1");
     }
 
     // -------------------------------------------------------------------------

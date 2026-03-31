@@ -6,6 +6,7 @@ import com.daker.domain.hackathon.repository.*;
 import com.daker.domain.team.domain.Team;
 import com.daker.domain.team.repository.TeamMemberRepository;
 import com.daker.domain.team.repository.TeamRepository;
+import com.daker.domain.vote.repository.VoteRepository;
 import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
 import com.daker.global.response.PageResponse;
@@ -15,7 +16,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +30,7 @@ public class HackathonService {
     private final HackathonRegistrationRepository registrationRepository;
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final VoteRepository voteRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<HackathonSummaryResponse> getHackathons(HackathonStatus status, String tag, String q, Pageable pageable) {
@@ -120,7 +125,7 @@ public class HackathonService {
         }
 
         Team myTeam = teamRepository.findAllByUserId(userId).stream()
-                .filter(t -> t.getHackathon().getId().equals(hackathonId))
+                .filter(t -> t.getHackathon() != null && t.getHackathon().getId().equals(hackathonId))
                 .findFirst()
                 .orElseThrow(() -> new CustomException(ErrorCode.REGISTRATION_NOT_FOUND));
 
@@ -150,11 +155,48 @@ public class HackathonService {
 
         List<Team> teams = teamRepository.findAllByHackathonId(hackathonId);
 
+        if (hackathon.getScoreType() == ScoreType.VOTE) {
+            return buildVoteLeaderboard(hackathon, teams);
+        }
+
         // TODO: 제출 도메인 개발 후 submitted 여부 및 score 연결
         List<LeaderboardResponse.LeaderboardTeamInfo> items = teams.stream()
                 .map(team -> new LeaderboardResponse.LeaderboardTeamInfo(team, null, null, false))
                 .toList();
 
         return new LeaderboardResponse(hackathon.getScoreType().name(), items);
+    }
+
+    private LeaderboardResponse buildVoteLeaderboard(Hackathon hackathon, List<Team> teams) {
+        // 해커톤 종료 전에는 결과 비공개 — rank/score 모두 null
+        if (!hackathon.isEnded()) {
+            List<LeaderboardResponse.LeaderboardTeamInfo> items = teams.stream()
+                    .map(team -> new LeaderboardResponse.LeaderboardTeamInfo(team, null, null, false))
+                    .toList();
+            return new LeaderboardResponse(ScoreType.VOTE.name(), items);
+        }
+
+        // 팀별 득표수 집계
+        Map<Long, Long> voteCountByTeam = voteRepository
+                .countByHackathonIdGroupByTeam(hackathon.getId())
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
+        // 득표수 내림차순 정렬 후 rank 부여, score는 null (득표수 비공개)
+        List<Team> sorted = teams.stream()
+                .sorted(Comparator.comparingLong(
+                        (Team t) -> voteCountByTeam.getOrDefault(t.getId(), 0L)
+                ).reversed())
+                .toList();
+
+        List<LeaderboardResponse.LeaderboardTeamInfo> items = new java.util.ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            items.add(new LeaderboardResponse.LeaderboardTeamInfo(sorted.get(i), i + 1, null, false));
+        }
+
+        return new LeaderboardResponse(ScoreType.VOTE.name(), items);
     }
 }
