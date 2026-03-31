@@ -25,13 +25,32 @@ public class RankingService {
 
     @Transactional(readOnly = true)
     public List<ScoreRankingResponse> getScoreRankings(RankingPeriod period, Long userId) {
-        return List.of();
+        List<ParticipationAccumulator> sorted = buildAccumulators(period).values().stream()
+                .sorted(Comparator
+                        .comparingInt(ParticipationAccumulator::getScore).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .thenComparing(ParticipationAccumulator::getNickname))
+                .toList();
+
+        return buildScoreResponses(sorted, userId);
     }
 
     @Transactional(readOnly = true)
     public List<ParticipationRankingResponse> getParticipationRankings(RankingPeriod period, Long userId) {
-        LocalDateTime startDateTime = period.resolveStartDateTime();
+        List<ParticipationAccumulator> sorted = buildAccumulators(period).values().stream()
+                .sorted(Comparator
+                        .comparingInt(ParticipationAccumulator::getParticipationCount).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .thenComparingDouble(ParticipationAccumulator::getSubmitRateValue).reversed()
+                        .thenComparing(ParticipationAccumulator::getNickname))
+                .toList();
 
+        return buildParticipationResponses(sorted, userId);
+    }
+
+    private Map<Long, ParticipationAccumulator> buildAccumulators(RankingPeriod period) {
+        LocalDateTime startDateTime = period.resolveStartDateTime();
         Map<Long, ParticipationAccumulator> accumulators = new HashMap<>();
 
         for (TeamMember member : teamMemberRepository.findAllActiveMembersForRanking()) {
@@ -46,15 +65,31 @@ public class RankingService {
             ).addParticipation(member);
         }
 
-        List<ParticipationAccumulator> sorted = accumulators.values().stream()
-                .sorted(Comparator
-                        .comparingInt(ParticipationAccumulator::getParticipationCount).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
-                        .thenComparingDouble(ParticipationAccumulator::getSubmitRateValue).reversed()
-                        .thenComparing(ParticipationAccumulator::getNickname))
-                .toList();
+        return accumulators;
+    }
 
-        return buildParticipationResponses(sorted, userId);
+    private List<ScoreRankingResponse> buildScoreResponses(
+            List<ParticipationAccumulator> sorted,
+            Long currentUserId
+    ) {
+        java.util.ArrayList<ScoreRankingResponse> responses = new java.util.ArrayList<>();
+
+        for (int index = 0; index < sorted.size(); index++) {
+            ParticipationAccumulator item = sorted.get(index);
+            responses.add(new ScoreRankingResponse(
+                    item.getUserId(),
+                    index + 1,
+                    item.getNickname(),
+                    item.getScore(),
+                    item.getParticipationCount(),
+                    item.getCompletedCount(),
+                    item.getSubmitRateLabel(),
+                    "미집계",
+                    item.getUserId().equals(currentUserId)
+            ));
+        }
+
+        return responses;
     }
 
     private List<ParticipationRankingResponse> buildParticipationResponses(
@@ -112,6 +147,11 @@ public class RankingService {
 
         private String getNickname() {
             return nickname;
+        }
+
+        private int getScore() {
+            // TODO: 제출/심사 도메인 연동 후 실제 점수 기반 랭킹으로 교체
+            return (getCompletedCount() * 1000) + (getParticipationCount() * 100);
         }
 
         private int getParticipationCount() {
