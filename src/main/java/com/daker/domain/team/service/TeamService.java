@@ -126,7 +126,7 @@ public class TeamService {
             throw new CustomException(ErrorCode.NOT_TEAM_LEADER);
         }
 
-        if (!team.getHackathon().isRegistrationOpen()) {
+        if (team.getHackathon() != null && !team.getHackathon().isRegistrationOpen()) {
             throw new CustomException(ErrorCode.TEAM_APPLICATION_CLOSED);
         }
 
