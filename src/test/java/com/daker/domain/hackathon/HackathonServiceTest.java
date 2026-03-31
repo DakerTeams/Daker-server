@@ -10,6 +10,7 @@ import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.hackathon.service.HackathonService;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
+import com.daker.domain.vote.repository.VoteRepository;
 import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -41,6 +42,7 @@ class HackathonServiceTest {
     @Mock private HackathonRegistrationRepository registrationRepository;
     @Mock private TeamRepository teamRepository;
     @Mock private TeamMemberRepository teamMemberRepository;
+    @Mock private VoteRepository voteRepository;
 
     // -------------------------------------------------------------------------
     // 헬퍼
@@ -307,6 +309,72 @@ class HackathonServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.HACKATHON_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("VOTE 방식 리더보드 - 해커톤 종료 전에는 rank/score 모두 null")
+    void getLeaderboard_vote_beforeEnd() {
+        Hackathon h = Hackathon.builder()
+                .title("Vote Hackathon")
+                .organizer("org")
+                .status(HackathonStatus.OPEN)
+                .scoreType(ScoreType.VOTE)
+                .startDate(LocalDateTime.now().minusDays(1))
+                .endDate(LocalDateTime.now().plusDays(3))
+                .registrationStartDate(LocalDateTime.now().minusDays(5))
+                .registrationEndDate(LocalDateTime.now().minusDays(1))
+                .maxTeamSize(5)
+                .build();
+        setField(h, "id", 10L);
+
+        User leader = mockUser(1L);
+        Team team = mockTeam(1L, h, leader);
+
+        given(hackathonRepository.findByIdAndDeletedFalse(10L)).willReturn(Optional.of(h));
+        given(teamRepository.findAllByHackathonId(10L)).willReturn(List.of(team));
+
+        LeaderboardResponse response = hackathonService.getLeaderboard(10L);
+
+        assertThat(response.getScoreType()).isEqualTo("VOTE");
+        assertThat(response.getItems()).hasSize(1);
+        assertThat(response.getItems().get(0).getRank()).isNull();
+        assertThat(response.getItems().get(0).getScore()).isNull();
+    }
+
+    @Test
+    @DisplayName("VOTE 방식 리더보드 - 해커톤 종료 후 득표수 기준 rank 반환, score는 null")
+    void getLeaderboard_vote_afterEnd() {
+        Hackathon h = Hackathon.builder()
+                .title("Vote Hackathon Ended")
+                .organizer("org")
+                .status(HackathonStatus.ENDED)
+                .scoreType(ScoreType.VOTE)
+                .startDate(LocalDateTime.now().minusDays(10))
+                .endDate(LocalDateTime.now().minusDays(1))
+                .registrationStartDate(LocalDateTime.now().minusDays(14))
+                .registrationEndDate(LocalDateTime.now().minusDays(8))
+                .maxTeamSize(5)
+                .build();
+        setField(h, "id", 11L);
+
+        User leader = mockUser(1L);
+        Team team1 = mockTeam(1L, h, leader);
+        Team team2 = mockTeam(2L, h, leader);
+
+        // team1: 5표, team2: 3표
+        given(hackathonRepository.findByIdAndDeletedFalse(11L)).willReturn(Optional.of(h));
+        given(teamRepository.findAllByHackathonId(11L)).willReturn(List.of(team1, team2));
+        given(voteRepository.countByHackathonIdGroupByTeam(11L))
+                .willReturn(List.of(new Object[]{1L, 5L}, new Object[]{2L, 3L}));
+
+        LeaderboardResponse response = hackathonService.getLeaderboard(11L);
+
+        assertThat(response.getScoreType()).isEqualTo("VOTE");
+        assertThat(response.getItems()).hasSize(2);
+        assertThat(response.getItems().get(0).getRank()).isEqualTo(1);
+        assertThat(response.getItems().get(0).getTeamName()).isEqualTo("Team 1");
+        assertThat(response.getItems().get(1).getRank()).isEqualTo(2);
+        assertThat(response.getItems().get(0).getScore()).isNull();
     }
 
     // -------------------------------------------------------------------------
