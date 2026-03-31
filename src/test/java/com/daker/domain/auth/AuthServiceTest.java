@@ -3,6 +3,7 @@ package com.daker.domain.auth;
 import com.daker.domain.auth.dto.*;
 import com.daker.domain.auth.repository.RefreshTokenRepository;
 import com.daker.domain.auth.service.AuthService;
+import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.user.domain.AccountStatus;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
@@ -38,6 +39,7 @@ class AuthServiceTest {
     @Mock private JwtProvider jwtProvider;
     @Mock private JwtProperties jwtProperties;
     @Mock private PasswordEncoder passwordEncoder;
+    @Mock private TeamRepository teamRepository;
 
     private User mockUser() {
         return User.builder()
@@ -183,6 +185,7 @@ class AuthServiceTest {
     @DisplayName("내 정보 조회 성공")
     void me_success() {
         given(userRepository.findById(1L)).willReturn(Optional.of(mockUser()));
+        given(teamRepository.findAllByUserId(1L)).willReturn(java.util.List.of());
 
         MeResponse response = authService.me(1L);
 
