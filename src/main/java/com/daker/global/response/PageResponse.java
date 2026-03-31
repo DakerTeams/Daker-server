@@ -9,14 +9,14 @@ import java.util.List;
 public class PageResponse<T> {
 
     private final List<T> items;
-    private final long total;
+    private final long totalCount;
     private final int page;
     private final int limit;
     private final boolean hasNext;
 
     public PageResponse(Page<T> page) {
         this.items = page.getContent();
-        this.total = page.getTotalElements();
+        this.totalCount = page.getTotalElements();
         this.page = page.getNumber() + 1;
         this.limit = page.getSize();
         this.hasNext = page.hasNext();

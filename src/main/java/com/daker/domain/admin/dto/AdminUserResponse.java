@@ -14,6 +14,7 @@ public class AdminUserResponse {
     private final String email;
     private final Role role;
     private final LocalDateTime createdAt;
+    private final LocalDateTime updatedAt;
 
     public AdminUserResponse(User user) {
         this.userId = user.getId();
@@ -21,5 +22,6 @@ public class AdminUserResponse {
         this.email = user.getEmail();
         this.role = user.getRole();
         this.createdAt = user.getCreatedAt();
+        this.updatedAt = user.getUpdatedAt();
     }
 }

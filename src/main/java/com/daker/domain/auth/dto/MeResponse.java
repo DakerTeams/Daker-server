@@ -15,14 +15,16 @@ public class MeResponse {
     private final String email;
     private final Role role;
     private final AccountStatus accountStatus;
+    private final int joinedHackathons;
     private final LocalDateTime createdAt;
 
-    public MeResponse(User user) {
+    public MeResponse(User user, int joinedHackathons) {
         this.userId = user.getId();
         this.nickname = user.getNickname();
         this.email = user.getEmail();
         this.role = user.getRole();
         this.accountStatus = user.getAccountStatus();
+        this.joinedHackathons = joinedHackathons;
         this.createdAt = user.getCreatedAt();
     }
 }

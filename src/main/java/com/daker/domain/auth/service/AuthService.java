@@ -2,6 +2,7 @@ package com.daker.domain.auth.service;
 
 import com.daker.domain.auth.dto.*;
 import com.daker.domain.auth.repository.RefreshTokenRepository;
+import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.user.domain.AccountStatus;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
@@ -21,6 +22,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
+    private final TeamRepository teamRepository;
     private final JwtProvider jwtProvider;
     private final JwtProperties jwtProperties;
     private final PasswordEncoder passwordEncoder;
@@ -92,6 +94,10 @@ public class AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        return new MeResponse(user);
+        int joinedHackathons = (int) teamRepository.findAllByUserId(userId).stream()
+                .filter(t -> t.getHackathon() != null)
+                .count();
+
+        return new MeResponse(user, joinedHackathons);
     }
 }

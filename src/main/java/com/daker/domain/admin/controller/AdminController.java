@@ -37,12 +37,12 @@ public class AdminController {
     // -------------------------------------------------------------------------
 
     @GetMapping("/hackathons")
-    public ApiResponse<PageResponse<AdminHackathonResponse>> getHackathons(
+    public ApiResponse<java.util.Map<String, Object>> getHackathons(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit
     ) {
-        return ApiResponse.ok(adminService.getHackathons(
-                PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id"))));
+        return ApiResponse.ok(java.util.Map.of("hackathonList",
+                adminService.getHackathons(PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id")))));
     }
 
     @PostMapping("/hackathons")
