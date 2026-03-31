@@ -23,4 +23,13 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
             @Param("userId") Long userId,
             @Param("hackathonId") Long hackathonId
     );
+
+    @Query("SELECT tm FROM TeamMember tm " +
+           "JOIN FETCH tm.user u " +
+           "JOIN FETCH tm.team t " +
+           "JOIN FETCH t.hackathon h " +
+           "WHERE tm.leftAt IS NULL " +
+           "AND t.status <> com.daker.domain.team.domain.TeamStatus.DELETED " +
+           "AND h.deleted = false")
+    List<TeamMember> findAllActiveMembersForRanking();
 }
