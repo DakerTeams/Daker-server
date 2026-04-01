@@ -19,10 +19,11 @@ public class AdminHackathonResponse {
     private final LocalDateTime submissionDeadlineAt;
     private final int maxTeamSize;
     private final Integer maxParticipants;
+    private final int numOfTeams;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    public AdminHackathonResponse(Hackathon hackathon) {
+    public AdminHackathonResponse(Hackathon hackathon, int numOfTeams) {
         this.id = hackathon.getId();
         this.title = hackathon.getTitle();
         this.status = hackathon.getStatus();
@@ -32,6 +33,7 @@ public class AdminHackathonResponse {
         this.submissionDeadlineAt = hackathon.getSubmissionDeadlineAt();
         this.maxTeamSize = hackathon.getMaxTeamSize();
         this.maxParticipants = hackathon.getMaxParticipants();
+        this.numOfTeams = numOfTeams;
         this.createdAt = hackathon.getCreatedAt();
         this.updatedAt = hackathon.getUpdatedAt();
     }

@@ -1,5 +1,6 @@
 package com.daker.domain.ranking.service;
 
+import com.daker.domain.ranking.dto.MyRankingResponse;
 import com.daker.domain.ranking.dto.ParticipationRankingResponse;
 import com.daker.domain.ranking.dto.RankingPeriod;
 import com.daker.domain.ranking.dto.ScoreRankingResponse;
@@ -47,6 +48,55 @@ public class RankingService {
                 .toList();
 
         return buildParticipationResponses(sorted, userId);
+    }
+
+    @Transactional(readOnly = true)
+    public MyRankingResponse getMyRanking(RankingPeriod period, Long userId) {
+        List<ParticipationAccumulator> scoreSorted = buildAccumulators(period).values().stream()
+                .sorted(Comparator
+                        .comparingInt(ParticipationAccumulator::getScore).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .thenComparing(ParticipationAccumulator::getNickname))
+                .toList();
+
+        List<ParticipationAccumulator> participationSorted = buildAccumulators(period).values().stream()
+                .sorted(Comparator
+                        .comparingInt(ParticipationAccumulator::getParticipationCount).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .thenComparingDouble(ParticipationAccumulator::getSubmitRateValue).reversed()
+                        .thenComparing(ParticipationAccumulator::getNickname))
+                .toList();
+
+        int scoreRank = 1;
+        int scorePoints = 0;
+        for (int i = 0; i < scoreSorted.size(); i++) {
+            if (scoreSorted.get(i).getUserId().equals(userId)) {
+                scoreRank = i + 1;
+                scorePoints = scoreSorted.get(i).getScore();
+                break;
+            }
+        }
+
+        int participationRank = 1;
+        int hackathonCount = 0;
+        int completionCount = 0;
+        String submissionRate = "0%";
+        for (int i = 0; i < participationSorted.size(); i++) {
+            ParticipationAccumulator acc = participationSorted.get(i);
+            if (acc.getUserId().equals(userId)) {
+                participationRank = i + 1;
+                hackathonCount = acc.getParticipationCount();
+                completionCount = acc.getCompletedCount();
+                submissionRate = acc.getSubmitRateLabel();
+                break;
+            }
+        }
+
+        return new MyRankingResponse(
+                new MyRankingResponse.ScoreRank(scoreRank, scorePoints),
+                new MyRankingResponse.ParticipationRank(participationRank, hackathonCount, completionCount, submissionRate)
+        );
     }
 
     private Map<Long, ParticipationAccumulator> buildAccumulators(RankingPeriod period) {

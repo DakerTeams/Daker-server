@@ -15,6 +15,7 @@ public class AdminDashboardResponse {
     private final HackathonStats hackathons;
     private final TeamStats participatedTeams;
     private final UserStats users;
+    private final SubmissionStats submissions;
     private final LocalDateTime updatedAt;
 
     @Getter
@@ -70,5 +71,12 @@ public class AdminDashboardResponse {
         private final long total;
         private final long newThisMonth;
         private final long judges;
+    }
+
+    @Getter
+    @Builder
+    public static class SubmissionStats {
+        private final long total;
+        private final long pendingReview;
     }
 }

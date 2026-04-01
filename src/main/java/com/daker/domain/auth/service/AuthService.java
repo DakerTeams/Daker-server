@@ -2,6 +2,9 @@ package com.daker.domain.auth.service;
 
 import com.daker.domain.auth.dto.*;
 import com.daker.domain.auth.repository.RefreshTokenRepository;
+import com.daker.domain.ranking.dto.MyRankingResponse;
+import com.daker.domain.ranking.dto.RankingPeriod;
+import com.daker.domain.ranking.service.RankingService;
 import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.user.domain.AccountStatus;
 import com.daker.domain.user.domain.Role;
@@ -23,6 +26,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TeamRepository teamRepository;
+    private final RankingService rankingService;
     private final JwtProvider jwtProvider;
     private final JwtProperties jwtProperties;
     private final PasswordEncoder passwordEncoder;
@@ -98,6 +102,8 @@ public class AuthService {
                 .filter(t -> t.getHackathon() != null)
                 .count();
 
-        return new MeResponse(user, joinedHackathons);
+        MyRankingResponse myRanking = rankingService.getMyRanking(RankingPeriod.ALL, userId);
+
+        return new MeResponse(user, joinedHackathons, myRanking.getScoreRank().getPoints(), myRanking.getScoreRank().getRank());
     }
 }

@@ -1,5 +1,6 @@
 package com.daker.domain.ranking.controller;
 
+import com.daker.domain.ranking.dto.MyRankingResponse;
 import com.daker.domain.ranking.dto.ParticipationRankingResponse;
 import com.daker.domain.ranking.dto.RankingPeriod;
 import com.daker.domain.ranking.dto.ScoreRankingResponse;
@@ -35,5 +36,13 @@ public class RankingController {
             @AuthenticationPrincipal Long userId
     ) {
         return ApiResponse.ok(rankingService.getParticipationRankings(RankingPeriod.from(period), userId));
+    }
+
+    @GetMapping("/me")
+    public ApiResponse<MyRankingResponse> getMyRanking(
+            @RequestParam(defaultValue = "all") String period,
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.ok(rankingService.getMyRanking(RankingPeriod.from(period), userId));
     }
 }

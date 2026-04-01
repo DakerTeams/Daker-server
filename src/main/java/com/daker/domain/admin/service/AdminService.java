@@ -3,6 +3,8 @@ package com.daker.domain.admin.service;
 import com.daker.domain.admin.dto.*;
 import com.daker.domain.hackathon.domain.*;
 import com.daker.domain.hackathon.repository.*;
+import com.daker.domain.judge.repository.JudgeEvaluationRepository;
+import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
@@ -32,6 +34,8 @@ public class AdminService {
     private final HackathonJudgeRepository hackathonJudgeRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
+    private final SubmissionRepository submissionRepository;
+    private final JudgeEvaluationRepository judgeEvaluationRepository;
 
     // -------------------------------------------------------------------------
     // 대시보드
@@ -67,6 +71,11 @@ public class AdminService {
         long newUsersThisMonth = userRepository.countByCreatedAtAfter(startOfMonth);
         long totalJudges = userRepository.findAllByRole(Role.JUDGE, Pageable.unpaged()).getTotalElements();
 
+        // 제출 통계
+        long totalSubmissions = submissionRepository.countByIsLatestTrue();
+        long reviewedCount = judgeEvaluationRepository.count();
+        long pendingReview = Math.max(0, totalSubmissions - reviewedCount);
+
         return AdminDashboardResponse.builder()
                 .hackathons(AdminDashboardResponse.HackathonStats.builder()
                         .total(total)
@@ -91,6 +100,10 @@ public class AdminService {
                         .newThisMonth(newUsersThisMonth)
                         .judges(totalJudges)
                         .build())
+                .submissions(AdminDashboardResponse.SubmissionStats.builder()
+                        .total(totalSubmissions)
+                        .pendingReview(pendingReview)
+                        .build())
                 .updatedAt(LocalDateTime.now())
                 .build();
     }
@@ -101,7 +114,8 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public PageResponse<AdminHackathonResponse> getHackathons(Pageable pageable) {
-        return new PageResponse<>(hackathonRepository.findAll(pageable).map(AdminHackathonResponse::new));
+        return new PageResponse<>(hackathonRepository.findAll(pageable)
+                .map(h -> new AdminHackathonResponse(h, teamRepository.findAllByHackathonId(h.getId()).size())));
     }
 
     @Transactional
@@ -206,7 +220,12 @@ public class AdminService {
         Page<User> users = role != null
                 ? userRepository.findAllByRole(role, pageable)
                 : userRepository.findAll(pageable);
-        return new PageResponse<>(users.map(AdminUserResponse::new));
+        return new PageResponse<>(users.map(user -> {
+            int joinedHackathons = (int) teamRepository.findAllByUserId(user.getId()).stream()
+                    .filter(t -> t.getHackathon() != null)
+                    .count();
+            return new AdminUserResponse(user, 0, joinedHackathons);
+        }));
     }
 
     // -------------------------------------------------------------------------

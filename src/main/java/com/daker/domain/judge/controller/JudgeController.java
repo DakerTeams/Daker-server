@@ -7,6 +7,7 @@ import com.daker.domain.judge.dto.JudgeTeamsResponse;
 import com.daker.domain.judge.service.JudgeService;
 import com.daker.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -34,6 +35,7 @@ public class JudgeController {
         return ApiResponse.ok(judgeService.getTeamsForHackathon(hackathonId, userId));
     }
 
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/hackathons/{hackathonId}/teams/{teamId}")
     public ApiResponse<JudgeScoreResponse> score(
             @PathVariable Long hackathonId,
@@ -41,6 +43,6 @@ public class JudgeController {
             @RequestBody JudgeScoreRequest request,
             @AuthenticationPrincipal Long userId
     ) {
-        return ApiResponse.ok(judgeService.score(hackathonId, teamId, userId, request));
+        return ApiResponse.created(judgeService.score(hackathonId, teamId, userId, request));
     }
 }

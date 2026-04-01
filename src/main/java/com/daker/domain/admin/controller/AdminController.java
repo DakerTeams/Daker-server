@@ -6,6 +6,8 @@ import com.daker.domain.submission.dto.AdminSubmissionResponse;
 import com.daker.domain.submission.service.SubmissionService;
 import com.daker.domain.user.domain.Role;
 import com.daker.global.response.ApiResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import com.daker.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -48,11 +50,12 @@ public class AdminController {
                 adminService.getHackathons(PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id")))));
     }
 
+    @ResponseStatus(HttpStatus.CREATED)
     @PostMapping("/hackathons")
     public ApiResponse<AdminHackathonCreateResponse> createHackathon(
             @RequestBody @Valid HackathonCreateRequest request
     ) {
-        return ApiResponse.ok(adminService.createHackathon(request));
+        return ApiResponse.created(adminService.createHackathon(request));
     }
 
     @PatchMapping("/hackathons/{hackathonId}")

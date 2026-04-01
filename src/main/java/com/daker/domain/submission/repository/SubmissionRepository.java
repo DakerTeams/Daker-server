@@ -15,6 +15,8 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
 
     Optional<Submission> findByTeamIdAndHackathonIdAndIsLatestTrue(Long teamId, Long hackathonId);
 
+    long countByIsLatestTrue();
+
     @Query("SELECT s FROM Submission s " +
            "WHERE s.isLatest = true " +
            "AND (:hackathonId IS NULL OR s.hackathon.id = :hackathonId) " +
