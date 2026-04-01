@@ -60,6 +60,7 @@ public enum ErrorCode {
 
     // 제출 (SUBMISSION)
     SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "제출물을 찾을 수 없습니다."),
+    ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 제출한 팀입니다."),
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, "허용되지 않는 파일 확장자입니다. (ZIP, PDF, URL만 허용)"),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, "파일 크기가 초과되었습니다. (최대 50MB)");
 

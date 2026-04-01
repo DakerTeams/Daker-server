@@ -2,6 +2,8 @@ package com.daker.domain.admin.controller;
 
 import com.daker.domain.admin.dto.*;
 import com.daker.domain.admin.service.AdminService;
+import com.daker.domain.submission.dto.AdminSubmissionResponse;
+import com.daker.domain.submission.service.SubmissionService;
 import com.daker.domain.user.domain.Role;
 import com.daker.global.response.ApiResponse;
 import com.daker.global.response.PageResponse;
@@ -19,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
+    private final SubmissionService submissionService;
 
     // -------------------------------------------------------------------------
     // 대시보드
@@ -90,6 +93,21 @@ public class AdminController {
             @RequestParam(defaultValue = "20") int limit
     ) {
         return ApiResponse.ok(adminService.getJudges(hackathonId,
+                PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id"))));
+    }
+
+    // -------------------------------------------------------------------------
+    // 제출물 관리
+    // -------------------------------------------------------------------------
+
+    @GetMapping("/submissions")
+    public ApiResponse<PageResponse<AdminSubmissionResponse>> getSubmissions(
+            @RequestParam(required = false) Long hackathonId,
+            @RequestParam(required = false) Long teamId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return ApiResponse.ok(submissionService.getAdminSubmissions(hackathonId, teamId,
                 PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id"))));
     }
 

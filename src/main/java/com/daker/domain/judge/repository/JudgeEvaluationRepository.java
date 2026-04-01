@@ -14,5 +14,7 @@ public interface JudgeEvaluationRepository extends JpaRepository<JudgeEvaluation
 
     boolean existsByHackathonIdAndTeamIdAndJudgeId(Long hackathonId, Long teamId, Long judgeId);
 
+    boolean existsByHackathonIdAndTeamId(Long hackathonId, Long teamId);
+
     long countByHackathonIdAndJudgeId(Long hackathonId, Long judgeId);
 }
