@@ -316,8 +316,32 @@ public class AdminService {
     private void savePrizes(Hackathon hackathon, List<HackathonCreateRequest.PrizeRequest> list) {
         if (list == null || list.isEmpty()) return;
         list.forEach(p -> hackathon.getPrizes().add(
-                Prize.builder().hackathon(hackathon).ranking(p.getRank()).amount(0).description(p.getLabel() + " " + p.getAmount()).build()
+                Prize.builder().hackathon(hackathon).ranking(p.getRank())
+                        .amount(parseAmount(p.getAmount()))
+                        .description(p.getLabel())
+                        .build()
         ));
+    }
+
+    private int parseAmount(String amountStr) {
+        if (amountStr == null || amountStr.isBlank()) return 0;
+        try {
+            String digits = amountStr.replaceAll("[^0-9만억]", "");
+            if (digits.contains("억")) {
+                String[] parts = digits.split("억");
+                int result = Integer.parseInt(parts[0]) * 100000000;
+                if (parts.length > 1 && parts[1].contains("만")) {
+                    result += Integer.parseInt(parts[1].replace("만", "")) * 10000;
+                }
+                return result;
+            } else if (digits.contains("만")) {
+                return Integer.parseInt(digits.replace("만", "")) * 10000;
+            } else {
+                return Integer.parseInt(digits);
+            }
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private void saveCriteria(Hackathon hackathon, List<HackathonCreateRequest.CriteriaRequest> list) {
