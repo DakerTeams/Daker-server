@@ -19,10 +19,10 @@ public class StatsService {
 
     @Transactional(readOnly = true)
     public StatsResponse getStats() {
-        long totalParticipants = userRepository.count();
+        long participants = userRepository.count();
         long activeHackathons = hackathonRepository.countByStatusAndDeletedFalse(HackathonStatus.OPEN);
-        long totalPrizeKRW = prizeRepository.sumAllAmounts();
+        long totalPrize = prizeRepository.sumAllAmounts();
 
-        return new StatsResponse(totalParticipants, activeHackathons, totalPrizeKRW);
+        return new StatsResponse(participants, activeHackathons, totalPrize);
     }
 }

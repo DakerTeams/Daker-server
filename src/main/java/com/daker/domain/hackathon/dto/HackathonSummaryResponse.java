@@ -13,6 +13,7 @@ public class HackathonSummaryResponse {
 
     private final Long id;
     private final String title;
+    private final String summary;
     private final String organizer;
     private final HackathonStatus status;
     private final ScoreType scoreType;
@@ -24,6 +25,7 @@ public class HackathonSummaryResponse {
     public HackathonSummaryResponse(Hackathon hackathon, List<String> tags, int participants) {
         this.id = hackathon.getId();
         this.title = hackathon.getTitle();
+        this.summary = hackathon.getSummary();
         this.organizer = hackathon.getOrganizer();
         this.status = hackathon.getStatus();
         this.scoreType = hackathon.getScoreType();
