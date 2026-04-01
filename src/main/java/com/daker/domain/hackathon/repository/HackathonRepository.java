@@ -32,5 +32,7 @@ public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
     // 어드민 전체 목록 (삭제 포함)
     Page<Hackathon> findAll(Pageable pageable);
 
+    long countByStatusAndDeletedFalse(HackathonStatus status);
+
     long countByCreatedAtAfter(LocalDateTime dateTime);
 }
