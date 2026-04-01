@@ -93,6 +93,9 @@ public class Hackathon {
     @OneToMany(mappedBy = "hackathon", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<HackathonLink> links = new ArrayList<>();
 
+    @OneToMany(mappedBy = "hackathon", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<HackathonSubmissionRule> submissionRules = new ArrayList<>();
+
     @CreatedDate
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
