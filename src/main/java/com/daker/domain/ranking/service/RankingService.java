@@ -120,7 +120,7 @@ public class RankingService {
         Map<Long, ParticipationAccumulator> accumulators = new HashMap<>();
 
         for (TeamMember member : teamMemberRepository.findAllActiveMembersForRanking()) {
-            if (startDateTime != null && member.getJoinedAt().isBefore(startDateTime)) {
+            if (startDateTime != null && member.getTeam().getHackathon().getStartDate().isBefore(startDateTime)) {
                 continue;
             }
 
