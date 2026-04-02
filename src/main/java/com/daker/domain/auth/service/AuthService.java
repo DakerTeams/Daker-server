@@ -10,6 +10,7 @@ import com.daker.domain.user.domain.AccountStatus;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
 import com.daker.domain.user.repository.UserRepository;
+import com.daker.domain.user.repository.UserTagRepository;
 import com.daker.global.auth.JwtProperties;
 import com.daker.global.auth.JwtProvider;
 import com.daker.global.exception.CustomException;
@@ -26,6 +27,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final TeamRepository teamRepository;
+    private final UserTagRepository userTagRepository;
     private final RankingService rankingService;
     private final JwtProvider jwtProvider;
     private final JwtProperties jwtProperties;
@@ -104,6 +106,7 @@ public class AuthService {
 
         MyRankingResponse myRanking = rankingService.getMyRanking(RankingPeriod.ALL, userId);
 
-        return new MeResponse(user, joinedHackathons, myRanking.getScoreRank().getPoints(), myRanking.getScoreRank().getRank());
+        return new MeResponse(user, joinedHackathons, myRanking.getScoreRank().getPoints(), myRanking.getScoreRank().getRank(),
+                userTagRepository.findAllByUserId(userId));
     }
 }
