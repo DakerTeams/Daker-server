@@ -11,6 +11,7 @@ import com.daker.domain.user.domain.AccountStatus;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
 import com.daker.domain.user.repository.UserRepository;
+import com.daker.domain.user.repository.UserTagRepository;
 import com.daker.global.auth.JwtProperties;
 import com.daker.global.auth.JwtProvider;
 import com.daker.global.exception.CustomException;
@@ -40,6 +41,7 @@ class AuthServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
     @Mock private TeamRepository teamRepository;
+    @Mock private UserTagRepository userTagRepository;
     @Mock private RankingService rankingService;
     @Mock private JwtProvider jwtProvider;
     @Mock private JwtProperties jwtProperties;
@@ -196,6 +198,7 @@ class AuthServiceTest {
         given(userRepository.findById(1L)).willReturn(Optional.of(mockUser()));
         given(teamRepository.findAllByUserId(1L)).willReturn(java.util.List.of());
         given(rankingService.getMyRanking(RankingPeriod.ALL, 1L)).willReturn(myRanking);
+        given(userTagRepository.findAllByUserId(1L)).willReturn(java.util.List.of());
 
         MeResponse response = authService.me(1L);
 

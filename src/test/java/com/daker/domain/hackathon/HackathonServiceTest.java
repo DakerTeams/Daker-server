@@ -10,6 +10,8 @@ import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.hackathon.service.HackathonService;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
+import com.daker.domain.judge.repository.JudgeEvaluationRepository;
+import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.vote.repository.VoteRepository;
 import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
@@ -43,6 +45,8 @@ class HackathonServiceTest {
     @Mock private TeamRepository teamRepository;
     @Mock private TeamMemberRepository teamMemberRepository;
     @Mock private VoteRepository voteRepository;
+    @Mock private SubmissionRepository submissionRepository;
+    @Mock private JudgeEvaluationRepository judgeEvaluationRepository;
 
     // -------------------------------------------------------------------------
     // 헬퍼
@@ -280,6 +284,8 @@ class HackathonServiceTest {
 
         given(hackathonRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(h));
         given(teamRepository.findAllByHackathonId(1L)).willReturn(List.of(team));
+        given(submissionRepository.findByTeamIdAndHackathonIdAndIsLatestTrue(anyLong(), anyLong()))
+                .willReturn(Optional.empty());
 
         LeaderboardResponse response = hackathonService.getLeaderboard(1L);
 

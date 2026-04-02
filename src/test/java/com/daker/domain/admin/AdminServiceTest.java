@@ -12,6 +12,7 @@ import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
 import com.daker.domain.user.repository.UserRepository;
+import com.daker.domain.xp.service.XpService;
 import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,7 @@ class AdminServiceTest {
     @Mock private TeamRepository teamRepository;
     @Mock private SubmissionRepository submissionRepository;
     @Mock private JudgeEvaluationRepository judgeEvaluationRepository;
+    @Mock private XpService xpService;
 
     // -------------------------------------------------------------------------
     // 헬퍼
