@@ -3,6 +3,7 @@ package com.daker.domain.ranking.dto;
 import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public enum RankingPeriod {
@@ -32,12 +33,12 @@ public enum RankingPeriod {
     }
 
     public LocalDateTime resolveStartDateTime() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime today = LocalDate.now().atStartOfDay();
 
         return switch (this) {
             case ALL -> null;
-            case THIRTY_DAYS -> now.minusDays(30);
-            case SEVEN_DAYS -> now.minusDays(7);
+            case THIRTY_DAYS -> today.minusDays(30);
+            case SEVEN_DAYS -> today.minusDays(7);
         };
     }
 }
