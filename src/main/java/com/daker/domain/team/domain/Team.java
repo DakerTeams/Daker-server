@@ -108,6 +108,12 @@ public class Team {
         if (isOpen != null) this.isOpen = isOpen;
     }
 
+    public void updateMaxMemberCount(Integer maxMemberCount) {
+        if (maxMemberCount != null && maxMemberCount > 0) {
+            this.maxMemberCount = maxMemberCount;
+        }
+    }
+
     public void linkHackathon(Hackathon hackathon) {
         this.hackathon = hackathon;
     }

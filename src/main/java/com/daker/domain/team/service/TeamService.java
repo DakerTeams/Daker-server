@@ -17,6 +17,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -92,6 +93,8 @@ public class TeamService {
         teamMemberRepository.save(leaderMember);
         team.getMembers().add(leaderMember);
 
+        replacePositions(team, request.getPositions());
+
         // 해커톤 연결된 경우 자동 참가 신청
         if (hackathon != null) {
             HackathonRegistration registration = HackathonRegistration.builder()
@@ -113,7 +116,13 @@ public class TeamService {
             throw new CustomException(ErrorCode.NOT_TEAM_LEADER);
         }
 
+        if (request.getMaxMemberCount() != null && request.getMaxMemberCount() < team.getCurrentMemberCount()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
         team.update(request.getName(), request.getDescription(), request.getIsOpen());
+        team.updateMaxMemberCount(request.getMaxMemberCount());
+        replacePositions(team, request.getPositions());
         return new TeamDetailResponse(team);
     }
 
@@ -207,5 +216,29 @@ public class TeamService {
         }
 
         return new TeamApplicationResponse(application);
+    }
+
+    private void replacePositions(Team team, List<TeamPositionRequest> requestedPositions) {
+        if (requestedPositions == null) {
+            return;
+        }
+
+        List<TeamPosition> nextPositions = new ArrayList<>();
+        for (TeamPositionRequest request : requestedPositions) {
+            if (request == null || request.getPositionName() == null || request.getPositionName().isBlank()) {
+                continue;
+            }
+
+            nextPositions.add(
+                    TeamPosition.builder()
+                            .team(team)
+                            .positionName(request.getPositionName().trim())
+                            .requiredCount(request.getRequiredCount() != null ? request.getRequiredCount() : 1)
+                            .build()
+            );
+        }
+
+        team.getPositions().clear();
+        team.getPositions().addAll(nextPositions);
     }
 }
