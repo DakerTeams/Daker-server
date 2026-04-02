@@ -152,7 +152,11 @@ public class TeamService {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TEAM_NOT_FOUND));
 
-        if (!team.getHackathon().isRegistrationOpen()) {
+        if (teamMemberRepository.existsByTeamIdAndUserId(teamId, userId)) {
+            throw new CustomException(ErrorCode.TEAM_ALREADY_EXISTS);
+        }
+
+        if (team.getHackathon() != null && !team.getHackathon().isRegistrationOpen()) {
             throw new CustomException(ErrorCode.TEAM_APPLICATION_CLOSED);
         }
 
@@ -164,7 +168,8 @@ public class TeamService {
             throw new CustomException(ErrorCode.ALREADY_APPLIED);
         }
 
-        if (teamMemberRepository.existsByUserIdAndHackathonId(userId, team.getHackathon().getId())) {
+        if (team.getHackathon() != null &&
+                teamMemberRepository.existsByUserIdAndHackathonId(userId, team.getHackathon().getId())) {
             throw new CustomException(ErrorCode.TEAM_ALREADY_EXISTS);
         }
 
