@@ -7,15 +7,15 @@ import java.time.LocalDateTime;
 @Getter
 public class StatsResponse {
 
-    private final long totalParticipants;
+    private final long participants;
     private final long activeHackathons;
-    private final long totalPrizeKRW;
+    private final long totalPrize;
     private final LocalDateTime updatedAt;
 
-    public StatsResponse(long totalParticipants, long activeHackathons, long totalPrizeKRW) {
-        this.totalParticipants = totalParticipants;
+    public StatsResponse(long participants, long activeHackathons, long totalPrize) {
+        this.participants = participants;
         this.activeHackathons = activeHackathons;
-        this.totalPrizeKRW = totalPrizeKRW;
+        this.totalPrize = totalPrize;
         this.updatedAt = LocalDateTime.now();
     }
 }

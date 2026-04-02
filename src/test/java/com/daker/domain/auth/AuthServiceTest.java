@@ -3,6 +3,9 @@ package com.daker.domain.auth;
 import com.daker.domain.auth.dto.*;
 import com.daker.domain.auth.repository.RefreshTokenRepository;
 import com.daker.domain.auth.service.AuthService;
+import com.daker.domain.ranking.dto.MyRankingResponse;
+import com.daker.domain.ranking.dto.RankingPeriod;
+import com.daker.domain.ranking.service.RankingService;
 import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.user.domain.AccountStatus;
 import com.daker.domain.user.domain.Role;
@@ -36,10 +39,11 @@ class AuthServiceTest {
 
     @Mock private UserRepository userRepository;
     @Mock private RefreshTokenRepository refreshTokenRepository;
+    @Mock private TeamRepository teamRepository;
+    @Mock private RankingService rankingService;
     @Mock private JwtProvider jwtProvider;
     @Mock private JwtProperties jwtProperties;
     @Mock private PasswordEncoder passwordEncoder;
-    @Mock private TeamRepository teamRepository;
 
     private User mockUser() {
         return User.builder()
@@ -182,15 +186,23 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("내 정보 조회 성공")
+    @DisplayName("내 정보 조회 성공 - points, rank 포함")
     void me_success() {
+        MyRankingResponse myRanking = new MyRankingResponse(
+                new MyRankingResponse.ScoreRank(3, 2100),
+                new MyRankingResponse.ParticipationRank(2, 3, 2, "66%")
+        );
+
         given(userRepository.findById(1L)).willReturn(Optional.of(mockUser()));
         given(teamRepository.findAllByUserId(1L)).willReturn(java.util.List.of());
+        given(rankingService.getMyRanking(RankingPeriod.ALL, 1L)).willReturn(myRanking);
 
         MeResponse response = authService.me(1L);
 
         assertThat(response.getEmail()).isEqualTo("test@test.com");
         assertThat(response.getNickname()).isEqualTo("tester");
+        assertThat(response.getPoints()).isEqualTo(2100);
+        assertThat(response.getRank()).isEqualTo(3);
     }
 
     @Test

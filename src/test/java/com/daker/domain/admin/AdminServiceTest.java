@@ -6,6 +6,8 @@ import com.daker.domain.admin.dto.AdminHackathonUpdateResponse;
 import com.daker.domain.admin.service.AdminService;
 import com.daker.domain.hackathon.domain.*;
 import com.daker.domain.hackathon.repository.*;
+import com.daker.domain.judge.repository.JudgeEvaluationRepository;
+import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.team.repository.TeamRepository;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
@@ -43,6 +45,8 @@ class AdminServiceTest {
     @Mock private HackathonJudgeRepository hackathonJudgeRepository;
     @Mock private UserRepository userRepository;
     @Mock private TeamRepository teamRepository;
+    @Mock private SubmissionRepository submissionRepository;
+    @Mock private JudgeEvaluationRepository judgeEvaluationRepository;
 
     // -------------------------------------------------------------------------
     // 헬퍼
@@ -135,6 +139,8 @@ class AdminServiceTest {
         given(userRepository.count()).willReturn(10L);
         given(userRepository.countByCreatedAtAfter(any())).willReturn(3L);
         given(userRepository.findAllByRole(eq(Role.JUDGE), any(Pageable.class))).willReturn(judgePage);
+        given(submissionRepository.countByIsLatestTrue()).willReturn(8L);
+        given(judgeEvaluationRepository.count()).willReturn(3L);
 
         AdminDashboardResponse result = adminService.getDashboard(1, 20);
 
@@ -148,6 +154,8 @@ class AdminServiceTest {
         assertThat(result.getUsers().getTotal()).isEqualTo(10);
         assertThat(result.getUsers().getNewThisMonth()).isEqualTo(3);
         assertThat(result.getUsers().getJudges()).isEqualTo(1);
+        assertThat(result.getSubmissions().getTotal()).isEqualTo(8);
+        assertThat(result.getSubmissions().getPendingReview()).isEqualTo(5);
     }
 
     // -------------------------------------------------------------------------
@@ -160,11 +168,13 @@ class AdminServiceTest {
         Hackathon h = mockHackathon(1L, HackathonStatus.OPEN);
         Page<Hackathon> page = new PageImpl<>(List.of(h));
         given(hackathonRepository.findAll(any(Pageable.class))).willReturn(page);
+        given(teamRepository.findAllByHackathonId(anyLong())).willReturn(List.of());
 
         var result = adminService.getHackathons(PageRequest.of(0, 20));
 
         assertThat(result.getItems()).hasSize(1);
         assertThat(result.getItems().get(0).getTitle()).isEqualTo("해커톤 1");
+        assertThat(result.getItems().get(0).getNumOfTeams()).isEqualTo(0);
     }
 
     // -------------------------------------------------------------------------
@@ -255,10 +265,12 @@ class AdminServiceTest {
     void getUsers_noFilter() {
         Page<User> page = new PageImpl<>(List.of(mockUser(1L, Role.USER), mockUser(2L, Role.JUDGE)));
         given(userRepository.findAll(any(Pageable.class))).willReturn(page);
+        given(teamRepository.findAllByUserId(anyLong())).willReturn(List.of());
 
         var result = adminService.getUsers(null, PageRequest.of(0, 20));
 
         assertThat(result.getItems()).hasSize(2);
+        assertThat(result.getItems().get(0).getJoinedHackathons()).isEqualTo(0);
     }
 
     @Test
@@ -266,11 +278,13 @@ class AdminServiceTest {
     void getUsers_withRoleFilter() {
         Page<User> page = new PageImpl<>(List.of(mockUser(1L, Role.JUDGE)));
         given(userRepository.findAllByRole(eq(Role.JUDGE), any(Pageable.class))).willReturn(page);
+        given(teamRepository.findAllByUserId(anyLong())).willReturn(List.of());
 
         var result = adminService.getUsers(Role.JUDGE, PageRequest.of(0, 20));
 
         assertThat(result.getItems()).hasSize(1);
         assertThat(result.getItems().get(0).getRole()).isEqualTo(Role.JUDGE);
+        assertThat(result.getItems().get(0).getJoinedHackathons()).isEqualTo(0);
     }
 
     // -------------------------------------------------------------------------

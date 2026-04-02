@@ -33,6 +33,9 @@ public class TeamApplication {
     @Column(columnDefinition = "TEXT")
     private String message;
 
+    @Column(length = 100)
+    private String position;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ApplicationStatus status;
@@ -50,10 +53,11 @@ public class TeamApplication {
     private LocalDateTime deletedAt;
 
     @Builder
-    public TeamApplication(Team team, User user, String message) {
+    public TeamApplication(Team team, User user, String message, String position) {
         this.team = team;
         this.user = user;
         this.message = message;
+        this.position = position;
         this.status = ApplicationStatus.PENDING;
     }
 

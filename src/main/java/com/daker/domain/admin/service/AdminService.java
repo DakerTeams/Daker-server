@@ -3,7 +3,10 @@ package com.daker.domain.admin.service;
 import com.daker.domain.admin.dto.*;
 import com.daker.domain.hackathon.domain.*;
 import com.daker.domain.hackathon.repository.*;
+import com.daker.domain.judge.repository.JudgeEvaluationRepository;
+import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.team.repository.TeamRepository;
+import com.daker.domain.xp.service.XpService;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
 import com.daker.domain.user.repository.UserRepository;
@@ -32,6 +35,9 @@ public class AdminService {
     private final HackathonJudgeRepository hackathonJudgeRepository;
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
+    private final SubmissionRepository submissionRepository;
+    private final JudgeEvaluationRepository judgeEvaluationRepository;
+    private final XpService xpService;
 
     // -------------------------------------------------------------------------
     // 대시보드
@@ -67,6 +73,11 @@ public class AdminService {
         long newUsersThisMonth = userRepository.countByCreatedAtAfter(startOfMonth);
         long totalJudges = userRepository.findAllByRole(Role.JUDGE, Pageable.unpaged()).getTotalElements();
 
+        // 제출 통계
+        long totalSubmissions = submissionRepository.countByIsLatestTrue();
+        long reviewedCount = judgeEvaluationRepository.count();
+        long pendingReview = Math.max(0, totalSubmissions - reviewedCount);
+
         return AdminDashboardResponse.builder()
                 .hackathons(AdminDashboardResponse.HackathonStats.builder()
                         .total(total)
@@ -91,6 +102,10 @@ public class AdminService {
                         .newThisMonth(newUsersThisMonth)
                         .judges(totalJudges)
                         .build())
+                .submissions(AdminDashboardResponse.SubmissionStats.builder()
+                        .total(totalSubmissions)
+                        .pendingReview(pendingReview)
+                        .build())
                 .updatedAt(LocalDateTime.now())
                 .build();
     }
@@ -101,7 +116,8 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public PageResponse<AdminHackathonResponse> getHackathons(Pageable pageable) {
-        return new PageResponse<>(hackathonRepository.findAll(pageable).map(AdminHackathonResponse::new));
+        return new PageResponse<>(hackathonRepository.findAll(pageable)
+                .map(h -> new AdminHackathonResponse(h, teamRepository.findAllByHackathonId(h.getId()).size())));
     }
 
     @Transactional
@@ -194,6 +210,7 @@ public class AdminService {
                 .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
 
         hackathon.updateStatus(HackathonStatus.CLOSED);
+        xpService.awardHackathonXp(hackathon);
         return new AdminHackathonCloseResponse(hackathon);
     }
 
@@ -206,7 +223,12 @@ public class AdminService {
         Page<User> users = role != null
                 ? userRepository.findAllByRole(role, pageable)
                 : userRepository.findAll(pageable);
-        return new PageResponse<>(users.map(AdminUserResponse::new));
+        return new PageResponse<>(users.map(user -> {
+            int joinedHackathons = (int) teamRepository.findAllByUserId(user.getId()).stream()
+                    .filter(t -> t.getHackathon() != null)
+                    .count();
+            return new AdminUserResponse(user, 0, joinedHackathons);
+        }));
     }
 
     // -------------------------------------------------------------------------
@@ -297,8 +319,32 @@ public class AdminService {
     private void savePrizes(Hackathon hackathon, List<HackathonCreateRequest.PrizeRequest> list) {
         if (list == null || list.isEmpty()) return;
         list.forEach(p -> hackathon.getPrizes().add(
-                Prize.builder().hackathon(hackathon).ranking(p.getRank()).amount(0).description(p.getLabel() + " " + p.getAmount()).build()
+                Prize.builder().hackathon(hackathon).ranking(p.getRank())
+                        .amount(parseAmount(p.getAmount()))
+                        .description(p.getLabel())
+                        .build()
         ));
+    }
+
+    private int parseAmount(String amountStr) {
+        if (amountStr == null || amountStr.isBlank()) return 0;
+        try {
+            String digits = amountStr.replaceAll("[^0-9만억]", "");
+            if (digits.contains("억")) {
+                String[] parts = digits.split("억");
+                int result = Integer.parseInt(parts[0]) * 100000000;
+                if (parts.length > 1 && parts[1].contains("만")) {
+                    result += Integer.parseInt(parts[1].replace("만", "")) * 10000;
+                }
+                return result;
+            } else if (digits.contains("만")) {
+                return Integer.parseInt(digits.replace("만", "")) * 10000;
+            } else {
+                return Integer.parseInt(digits);
+            }
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private void saveCriteria(Hackathon hackathon, List<HackathonCreateRequest.CriteriaRequest> list) {

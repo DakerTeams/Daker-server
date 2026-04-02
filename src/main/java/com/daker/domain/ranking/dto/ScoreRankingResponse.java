@@ -1,5 +1,6 @@
 package com.daker.domain.ranking.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -15,5 +16,6 @@ public class ScoreRankingResponse {
     private final int completedCount;
     private final String submitRate;
     private final String bestRank;
+    @JsonProperty("isMe")
     private final boolean isMe;
 }

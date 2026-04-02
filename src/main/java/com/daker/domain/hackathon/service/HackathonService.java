@@ -6,6 +6,8 @@ import com.daker.domain.hackathon.repository.*;
 import com.daker.domain.team.domain.Team;
 import com.daker.domain.team.repository.TeamMemberRepository;
 import com.daker.domain.team.repository.TeamRepository;
+import com.daker.domain.judge.repository.JudgeEvaluationRepository;
+import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.vote.repository.VoteRepository;
 import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
@@ -31,6 +33,8 @@ public class HackathonService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final VoteRepository voteRepository;
+    private final SubmissionRepository submissionRepository;
+    private final JudgeEvaluationRepository judgeEvaluationRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<HackathonSummaryResponse> getHackathons(HackathonStatus status, String tag, String q, Pageable pageable) {
@@ -159,12 +163,7 @@ public class HackathonService {
             return buildVoteLeaderboard(hackathon, teams);
         }
 
-        // TODO: 제출 도메인 개발 후 submitted 여부 및 score 연결
-        List<LeaderboardResponse.LeaderboardTeamInfo> items = teams.stream()
-                .map(team -> new LeaderboardResponse.LeaderboardTeamInfo(team, null, null, false))
-                .toList();
-
-        return new LeaderboardResponse(hackathon.getScoreType().name(), items);
+        return buildScoreLeaderboard(hackathon, teams);
     }
 
     private LeaderboardResponse buildVoteLeaderboard(Hackathon hackathon, List<Team> teams) {
@@ -198,5 +197,61 @@ public class HackathonService {
         }
 
         return new LeaderboardResponse(ScoreType.VOTE.name(), items);
+    }
+
+    private LeaderboardResponse buildScoreLeaderboard(Hackathon hackathon, List<Team> teams) {
+        boolean ended = hackathon.isEnded()
+                || hackathon.getStatus() == HackathonStatus.CLOSED
+                || hackathon.getStatus() == HackathonStatus.ENDED;
+
+        // 제출 여부 맵
+        Map<Long, Boolean> submittedByTeam = teams.stream()
+                .collect(Collectors.toMap(
+                        Team::getId,
+                        t -> submissionRepository
+                                .findByTeamIdAndHackathonIdAndIsLatestTrue(t.getId(), hackathon.getId())
+                                .isPresent()
+                ));
+
+        if (!ended) {
+            // 진행 중: 제출 여부만 표시, 점수/순위 비공개
+            List<LeaderboardResponse.LeaderboardTeamInfo> items = teams.stream()
+                    .map(t -> new LeaderboardResponse.LeaderboardTeamInfo(
+                            t, null, null, submittedByTeam.getOrDefault(t.getId(), false)))
+                    .toList();
+            return new LeaderboardResponse(ScoreType.SCORE.name(), items);
+        }
+
+        // 종료 후: 팀별 심사 평균 점수 계산 후 순위 부여
+        Map<Long, Double> avgScoreByTeam = new java.util.HashMap<>();
+        for (Team team : teams) {
+            List<com.daker.domain.judge.domain.JudgeEvaluation> evals =
+                    judgeEvaluationRepository.findAllByHackathonIdAndTeamId(hackathon.getId(), team.getId());
+            if (!evals.isEmpty()) {
+                double avg = evals.stream().mapToDouble(e -> e.getTotalScore()).average().orElse(0);
+                avgScoreByTeam.put(team.getId(), avg);
+            }
+        }
+
+        List<Team> sorted = teams.stream()
+                .sorted(Comparator.comparingDouble(
+                        (Team t) -> avgScoreByTeam.getOrDefault(t.getId(), -1.0)
+                ).reversed())
+                .toList();
+
+        List<LeaderboardResponse.LeaderboardTeamInfo> items = new java.util.ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            Team t = sorted.get(i);
+            Double score = avgScoreByTeam.get(t.getId());
+            int rank = score != null ? i + 1 : null != null ? 0 : 0;
+            items.add(new LeaderboardResponse.LeaderboardTeamInfo(
+                    t,
+                    score != null ? i + 1 : null,
+                    score,
+                    submittedByTeam.getOrDefault(t.getId(), false)
+            ));
+        }
+
+        return new LeaderboardResponse(ScoreType.SCORE.name(), items);
     }
 }

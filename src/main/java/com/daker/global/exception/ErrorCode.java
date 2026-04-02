@@ -25,6 +25,7 @@ public enum ErrorCode {
 
     // 유저 (USER)
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),
+    DUPLICATE_TAG(HttpStatus.CONFLICT, "이미 등록된 태그입니다."),
     ADMIN_ONLY(HttpStatus.FORBIDDEN, "관리자 권한이 필요합니다."),
     NOT_A_JUDGE(HttpStatus.BAD_REQUEST, "해당 사용자는 심사위원이 아닙니다."),
     ALREADY_A_JUDGE(HttpStatus.CONFLICT, "이미 심사위원입니다."),

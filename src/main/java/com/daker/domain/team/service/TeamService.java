@@ -47,7 +47,7 @@ public class TeamService {
 
     @Transactional(readOnly = true)
     public TeamDetailResponse getTeam(Long teamId) {
-        Team team = teamRepository.findById(teamId)
+        Team team = teamRepository.findByIdWithDetails(teamId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TEAM_NOT_FOUND));
         return new TeamDetailResponse(team);
     }
@@ -139,7 +139,7 @@ public class TeamService {
     }
 
     @Transactional
-    public void apply(Long teamId, Long userId) {
+    public void apply(Long teamId, Long userId, String position) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TEAM_NOT_FOUND));
 
@@ -162,7 +162,7 @@ public class TeamService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        teamApplicationRepository.save(TeamApplication.builder().team(team).user(user).build());
+        teamApplicationRepository.save(TeamApplication.builder().team(team).user(user).position(position).build());
     }
 
     @Transactional(readOnly = true)
@@ -199,7 +199,7 @@ public class TeamService {
 
         if (request.getStatus() == ApplicationStatus.ACCEPTED) {
             application.accept(processor);
-            TeamMember newMember = TeamMember.builder().team(team).user(application.getUser()).roleType(TeamMemberRole.MEMBER).build();
+            TeamMember newMember = TeamMember.builder().team(team).user(application.getUser()).roleType(TeamMemberRole.MEMBER).position(application.getPosition()).build();
             teamMemberRepository.save(newMember);
             team.incrementMemberCount();
         } else {
