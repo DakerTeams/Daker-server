@@ -310,7 +310,7 @@ class TeamServiceTest {
         given(teamMemberRepository.existsByUserIdAndHackathonId(2L, 1L)).willReturn(false);
         given(userRepository.findById(2L)).willReturn(Optional.of(applicant));
 
-        teamService.apply(1L, 2L);
+        teamService.apply(1L, 2L, null);
 
         verify(teamApplicationRepository).save(any(TeamApplication.class));
     }
@@ -324,7 +324,7 @@ class TeamServiceTest {
 
         given(teamRepository.findById(1L)).willReturn(Optional.of(team));
 
-        assertThatThrownBy(() -> teamService.apply(1L, 2L))
+        assertThatThrownBy(() -> teamService.apply(1L, 2L, null))
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.TEAM_APPLICATION_CLOSED);
@@ -343,7 +343,7 @@ class TeamServiceTest {
 
         given(teamRepository.findById(1L)).willReturn(Optional.of(team));
 
-        assertThatThrownBy(() -> teamService.apply(1L, 2L))
+        assertThatThrownBy(() -> teamService.apply(1L, 2L, null))
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.TEAM_FULL);
@@ -359,7 +359,7 @@ class TeamServiceTest {
         given(teamRepository.findById(1L)).willReturn(Optional.of(team));
         given(teamApplicationRepository.existsByTeamIdAndUserIdAndStatus(1L, 2L, ApplicationStatus.PENDING)).willReturn(true);
 
-        assertThatThrownBy(() -> teamService.apply(1L, 2L))
+        assertThatThrownBy(() -> teamService.apply(1L, 2L, null))
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.ALREADY_APPLIED);
@@ -376,7 +376,7 @@ class TeamServiceTest {
         given(teamApplicationRepository.existsByTeamIdAndUserIdAndStatus(1L, 2L, ApplicationStatus.PENDING)).willReturn(false);
         given(teamMemberRepository.existsByUserIdAndHackathonId(2L, 1L)).willReturn(true);
 
-        assertThatThrownBy(() -> teamService.apply(1L, 2L))
+        assertThatThrownBy(() -> teamService.apply(1L, 2L, null))
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.TEAM_ALREADY_EXISTS);
