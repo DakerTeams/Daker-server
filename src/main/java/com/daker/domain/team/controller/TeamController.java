@@ -72,9 +72,11 @@ public class TeamController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<Void> apply(
             @PathVariable Long id,
-            @AuthenticationPrincipal Long userId
+            @AuthenticationPrincipal Long userId,
+            @RequestBody(required = false) java.util.Map<String, String> body
     ) {
-        teamService.apply(id, userId);
+        String position = body != null ? body.get("position") : null;
+        teamService.apply(id, userId, position);
         return ApiResponse.created(null);
     }
 

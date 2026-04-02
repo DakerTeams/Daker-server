@@ -3,14 +3,20 @@ package com.daker.domain.team.repository;
 import com.daker.domain.team.domain.Team;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface TeamRepository extends JpaRepository<Team, Long> {
+
+    @EntityGraph(attributePaths = {"positions"})
+    @Query("SELECT t FROM Team t WHERE t.id = :id")
+    Optional<Team> findByIdWithDetails(@Param("id") Long id);
 
     // 팀 목록: hackathonId / isOpen / 키워드 필터
     @Query("SELECT t FROM Team t " +

@@ -26,6 +26,7 @@ public class TeamDetailResponse {
     private final int maxMemberCount;
     private final TeamSummaryResponse.LeaderInfo leader;
     private final List<MemberInfo> members;
+    private final List<TeamSummaryResponse.PositionInfo> positions;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
@@ -41,6 +42,9 @@ public class TeamDetailResponse {
         this.maxMemberCount = team.getMaxMemberCount();
         this.leader = new TeamSummaryResponse.LeaderInfo(team.getLeader().getId(), team.getLeader().getNickname());
         this.members = team.getMembers().stream().map(MemberInfo::new).toList();
+        this.positions = team.getPositions().stream()
+                .map(p -> new TeamSummaryResponse.PositionInfo(p.getPositionName(), p.getRequiredCount()))
+                .toList();
         this.createdAt = team.getCreatedAt();
         this.updatedAt = team.getUpdatedAt();
     }
@@ -50,11 +54,13 @@ public class TeamDetailResponse {
         private final Long userId;
         private final String nickname;
         private final TeamMemberRole roleType;
+        private final String position;
 
         public MemberInfo(TeamMember member) {
             this.userId = member.getUser().getId();
             this.nickname = member.getUser().getNickname();
             this.roleType = member.getRoleType();
+            this.position = member.getPosition();
         }
     }
 }

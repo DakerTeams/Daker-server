@@ -50,6 +50,10 @@ public interface SubmissionRepository extends JpaRepository<Submission, Long> {
     // 팀+해커톤의 전체 제출 (삭제용)
     List<Submission> findAllByTeamIdAndHackathonId(Long teamId, Long hackathonId);
 
+    // 랭킹 산정용: 제출물이 있는 (hackathonId, teamId) 쌍 전체 조회
+    @Query("SELECT s.hackathon.id, s.team.id FROM Submission s WHERE s.isLatest = true")
+    List<Object[]> findAllLatestHackathonTeamPairs();
+
     // 팀+해커톤 is_latest 일괄 false 처리
     @Modifying
     @Query("UPDATE Submission s SET s.isLatest = false " +

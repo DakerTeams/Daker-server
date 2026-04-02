@@ -1,49 +1,50 @@
 package com.daker.domain.ranking.service;
 
+import com.daker.domain.hackathon.domain.HackathonStatus;
 import com.daker.domain.ranking.dto.MyRankingResponse;
 import com.daker.domain.ranking.dto.ParticipationRankingResponse;
 import com.daker.domain.ranking.dto.RankingPeriod;
 import com.daker.domain.ranking.dto.ScoreRankingResponse;
+import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.team.domain.TeamMember;
 import com.daker.domain.team.repository.TeamMemberRepository;
+import com.daker.domain.xp.repository.UserXpHistoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class RankingService {
 
     private final TeamMemberRepository teamMemberRepository;
+    private final UserXpHistoryRepository userXpHistoryRepository;
+    private final SubmissionRepository submissionRepository;
 
     @Transactional(readOnly = true)
     public List<ScoreRankingResponse> getScoreRankings(RankingPeriod period, Long userId) {
-        List<ParticipationAccumulator> sorted = buildAccumulators(period).values().stream()
+        Map<Long, Integer> xpByUser = loadXpMap();
+        List<ParticipationAccumulator> accs = buildAccumulators(period).values().stream().toList();
+
+        List<ParticipationAccumulator> sorted = accs.stream()
                 .sorted(Comparator
-                        .comparingInt(ParticipationAccumulator::getScore).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .comparingInt((ParticipationAccumulator a) -> xpByUser.getOrDefault(a.getUserId(), 0)).reversed()
                         .thenComparing(ParticipationAccumulator::getNickname))
                 .toList();
 
-        return buildScoreResponses(sorted, userId);
+        return buildScoreResponses(sorted, xpByUser, userId);
     }
 
     @Transactional(readOnly = true)
     public List<ParticipationRankingResponse> getParticipationRankings(RankingPeriod period, Long userId) {
         List<ParticipationAccumulator> sorted = buildAccumulators(period).values().stream()
                 .sorted(Comparator
-                        .comparingInt(ParticipationAccumulator::getParticipationCount).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
-                        .thenComparingDouble(ParticipationAccumulator::getSubmitRateValue).reversed()
+                        .comparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
                         .thenComparing(ParticipationAccumulator::getNickname))
                 .toList();
 
@@ -52,19 +53,19 @@ public class RankingService {
 
     @Transactional(readOnly = true)
     public MyRankingResponse getMyRanking(RankingPeriod period, Long userId) {
-        List<ParticipationAccumulator> scoreSorted = buildAccumulators(period).values().stream()
+        Map<Long, Integer> xpByUser = loadXpMap();
+        Map<Long, ParticipationAccumulator> accMap = buildAccumulators(period);
+
+        List<ParticipationAccumulator> scoreSorted = accMap.values().stream()
                 .sorted(Comparator
-                        .comparingInt(ParticipationAccumulator::getScore).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .comparingInt((ParticipationAccumulator a) -> xpByUser.getOrDefault(a.getUserId(), 0)).reversed()
                         .thenComparing(ParticipationAccumulator::getNickname))
                 .toList();
 
-        List<ParticipationAccumulator> participationSorted = buildAccumulators(period).values().stream()
+        List<ParticipationAccumulator> participationSorted = accMap.values().stream()
                 .sorted(Comparator
-                        .comparingInt(ParticipationAccumulator::getParticipationCount).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getCompletedCount).reversed()
-                        .thenComparingDouble(ParticipationAccumulator::getSubmitRateValue).reversed()
+                        .comparingInt(ParticipationAccumulator::getCompletedCount).reversed()
+                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
                         .thenComparing(ParticipationAccumulator::getNickname))
                 .toList();
 
@@ -73,7 +74,7 @@ public class RankingService {
         for (int i = 0; i < scoreSorted.size(); i++) {
             if (scoreSorted.get(i).getUserId().equals(userId)) {
                 scoreRank = i + 1;
-                scorePoints = scoreSorted.get(i).getScore();
+                scorePoints = xpByUser.getOrDefault(userId, 0);
                 break;
             }
         }
@@ -81,26 +82,41 @@ public class RankingService {
         int participationRank = 1;
         int hackathonCount = 0;
         int completionCount = 0;
-        String submissionRate = "0%";
         for (int i = 0; i < participationSorted.size(); i++) {
             ParticipationAccumulator acc = participationSorted.get(i);
             if (acc.getUserId().equals(userId)) {
                 participationRank = i + 1;
                 hackathonCount = acc.getParticipationCount();
                 completionCount = acc.getCompletedCount();
-                submissionRate = acc.getSubmitRateLabel();
                 break;
             }
         }
 
         return new MyRankingResponse(
                 new MyRankingResponse.ScoreRank(scoreRank, scorePoints),
-                new MyRankingResponse.ParticipationRank(participationRank, hackathonCount, completionCount, submissionRate)
+                new MyRankingResponse.ParticipationRank(participationRank, hackathonCount, completionCount,
+                        participationSorted.stream().filter(a -> a.getUserId().equals(userId))
+                                .findFirst().map(ParticipationAccumulator::getSubmitRateLabel).orElse("0%"))
         );
+    }
+
+    // XP 합산 맵 로드 (userId → totalXp)
+    private Map<Long, Integer> loadXpMap() {
+        return userXpHistoryRepository.sumXpGroupByUser().stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> ((Number) row[1]).intValue()
+                ));
     }
 
     private Map<Long, ParticipationAccumulator> buildAccumulators(RankingPeriod period) {
         LocalDateTime startDateTime = period.resolveStartDateTime();
+
+        // 제출물이 있는 (hackathonId, teamId) 쌍 사전 로드
+        Set<String> submittedPairs = submissionRepository.findAllLatestHackathonTeamPairs().stream()
+                .map(row -> row[0] + ":" + row[1])
+                .collect(Collectors.toSet());
+
         Map<Long, ParticipationAccumulator> accumulators = new HashMap<>();
 
         for (TeamMember member : teamMemberRepository.findAllActiveMembersForRanking()) {
@@ -112,7 +128,7 @@ public class RankingService {
             accumulators.computeIfAbsent(
                     userIdKey,
                     ignored -> new ParticipationAccumulator(userIdKey, member.getUser().getNickname())
-            ).addParticipation(member);
+            ).addParticipation(member, submittedPairs);
         }
 
         return accumulators;
@@ -120,17 +136,17 @@ public class RankingService {
 
     private List<ScoreRankingResponse> buildScoreResponses(
             List<ParticipationAccumulator> sorted,
+            Map<Long, Integer> xpByUser,
             Long currentUserId
     ) {
-        java.util.ArrayList<ScoreRankingResponse> responses = new java.util.ArrayList<>();
-
-        for (int index = 0; index < sorted.size(); index++) {
-            ParticipationAccumulator item = sorted.get(index);
+        List<ScoreRankingResponse> responses = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            ParticipationAccumulator item = sorted.get(i);
             responses.add(new ScoreRankingResponse(
                     item.getUserId(),
-                    index + 1,
+                    i + 1,
                     item.getNickname(),
-                    item.getScore(),
+                    xpByUser.getOrDefault(item.getUserId(), 0),
                     item.getParticipationCount(),
                     item.getCompletedCount(),
                     item.getSubmitRateLabel(),
@@ -138,7 +154,6 @@ public class RankingService {
                     item.getUserId().equals(currentUserId)
             ));
         }
-
         return responses;
     }
 
@@ -146,21 +161,19 @@ public class RankingService {
             List<ParticipationAccumulator> sorted,
             Long currentUserId
     ) {
-        java.util.ArrayList<ParticipationRankingResponse> responses = new java.util.ArrayList<>();
-
-        for (int index = 0; index < sorted.size(); index++) {
-            ParticipationAccumulator item = sorted.get(index);
+        List<ParticipationRankingResponse> responses = new ArrayList<>();
+        for (int i = 0; i < sorted.size(); i++) {
+            ParticipationAccumulator item = sorted.get(i);
             responses.add(new ParticipationRankingResponse(
                     item.getUserId(),
-                    index + 1,
+                    i + 1,
                     item.getNickname(),
-                    item.getParticipationCount(),
+                    item.getCompletedCount(),      // 완주 횟수를 참가 횟수로
                     item.getCompletedCount(),
                     item.getSubmitRateLabel(),
                     item.getUserId().equals(currentUserId)
             ));
         }
-
         return responses;
     }
 
@@ -176,46 +189,33 @@ public class RankingService {
             this.nickname = nickname;
         }
 
-        private void addParticipation(TeamMember member) {
+        private void addParticipation(TeamMember member, Set<String> submittedPairs) {
             Long hackathonId = member.getTeam().getHackathon().getId();
             participatedHackathonIds.add(hackathonId);
 
-            if (isCompleted(member)) {
+            if (isCompleted(member, submittedPairs)) {
                 completedHackathonIds.add(hackathonId);
             }
         }
 
-        private boolean isCompleted(TeamMember member) {
-            return member.getTeam().getHackathon().isEnded()
-                    || member.getTeam().getHackathon().getStatus() == com.daker.domain.hackathon.domain.HackathonStatus.CLOSED
-                    || member.getTeam().getHackathon().getStatus() == com.daker.domain.hackathon.domain.HackathonStatus.ENDED;
+        // 완주 = 해커톤 종료(CLOSED/ENDED) + 팀 제출물 존재
+        private boolean isCompleted(TeamMember member, Set<String> submittedPairs) {
+            HackathonStatus status = member.getTeam().getHackathon().getStatus();
+            boolean hackathonEnded = member.getTeam().getHackathon().isEnded()
+                    || status == HackathonStatus.CLOSED
+                    || status == HackathonStatus.ENDED;
+
+            String pair = member.getTeam().getHackathon().getId() + ":" + member.getTeam().getId();
+            return hackathonEnded && submittedPairs.contains(pair);
         }
 
-        private Long getUserId() {
-            return userId;
-        }
-
-        private String getNickname() {
-            return nickname;
-        }
-
-        private int getScore() {
-            // TODO: 제출/심사 도메인 연동 후 실제 점수 기반 랭킹으로 교체
-            return (getCompletedCount() * 1000) + (getParticipationCount() * 100);
-        }
-
-        private int getParticipationCount() {
-            return participatedHackathonIds.size();
-        }
-
-        private int getCompletedCount() {
-            return completedHackathonIds.size();
-        }
+        private Long getUserId() { return userId; }
+        private String getNickname() { return nickname; }
+        private int getParticipationCount() { return participatedHackathonIds.size(); }
+        private int getCompletedCount() { return completedHackathonIds.size(); }
 
         private double getSubmitRateValue() {
-            if (getParticipationCount() == 0) {
-                return 0;
-            }
+            if (getParticipationCount() == 0) return 0;
             return ((double) getCompletedCount() / getParticipationCount()) * 100;
         }
 

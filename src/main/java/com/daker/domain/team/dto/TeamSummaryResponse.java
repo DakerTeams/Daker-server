@@ -5,6 +5,8 @@ import com.daker.domain.team.domain.TeamStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 
+import java.util.List;
+
 @Getter
 public class TeamSummaryResponse {
 
@@ -20,6 +22,7 @@ public class TeamSummaryResponse {
     private final int currentMemberCount;
     private final int maxMemberCount;
     private final LeaderInfo leader;
+    private final List<PositionInfo> positions;
 
     public TeamSummaryResponse(Team team) {
         this.id = team.getId();
@@ -32,6 +35,9 @@ public class TeamSummaryResponse {
         this.currentMemberCount = team.getCurrentMemberCount();
         this.maxMemberCount = team.getMaxMemberCount();
         this.leader = new LeaderInfo(team.getLeader().getId(), team.getLeader().getNickname());
+        this.positions = team.getPositions().stream()
+                .map(p -> new PositionInfo(p.getPositionName(), p.getRequiredCount()))
+                .toList();
     }
 
     @Getter
@@ -42,6 +48,17 @@ public class TeamSummaryResponse {
         public LeaderInfo(Long userId, String nickname) {
             this.userId = userId;
             this.nickname = nickname;
+        }
+    }
+
+    @Getter
+    public static class PositionInfo {
+        private final String positionName;
+        private final int requiredCount;
+
+        public PositionInfo(String positionName, int requiredCount) {
+            this.positionName = positionName;
+            this.requiredCount = requiredCount;
         }
     }
 }

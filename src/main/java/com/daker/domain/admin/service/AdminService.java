@@ -6,6 +6,7 @@ import com.daker.domain.hackathon.repository.*;
 import com.daker.domain.judge.repository.JudgeEvaluationRepository;
 import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.team.repository.TeamRepository;
+import com.daker.domain.xp.service.XpService;
 import com.daker.domain.user.domain.Role;
 import com.daker.domain.user.domain.User;
 import com.daker.domain.user.repository.UserRepository;
@@ -36,6 +37,7 @@ public class AdminService {
     private final TeamRepository teamRepository;
     private final SubmissionRepository submissionRepository;
     private final JudgeEvaluationRepository judgeEvaluationRepository;
+    private final XpService xpService;
 
     // -------------------------------------------------------------------------
     // 대시보드
@@ -208,6 +210,7 @@ public class AdminService {
                 .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
 
         hackathon.updateStatus(HackathonStatus.CLOSED);
+        xpService.awardHackathonXp(hackathon);
         return new AdminHackathonCloseResponse(hackathon);
     }
 

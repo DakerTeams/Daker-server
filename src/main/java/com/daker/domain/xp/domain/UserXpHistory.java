@@ -1,5 +1,6 @@
-package com.daker.domain.team.domain;
+package com.daker.domain.xp.domain;
 
+import com.daker.domain.hackathon.domain.Hackathon;
 import com.daker.domain.user.domain.User;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -12,50 +13,41 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "team_members")
+@Table(name = "user_xp_history",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "hackathon_id", "type"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @EntityListeners(AuditingEntityListener.class)
-public class TeamMember {
+public class UserXpHistory {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "team_id", nullable = false)
-    private Team team;
-
-    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hackathon_id", nullable = false)
+    private Hackathon hackathon;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private TeamMemberRole roleType = TeamMemberRole.MEMBER;
+    private XpType type;
 
-    @Column(length = 100)
-    private String position;
+    @Column(nullable = false)
+    private int amount;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)
-    private LocalDateTime joinedAt;
-
-    private LocalDateTime leftAt;
+    private LocalDateTime earnedAt;
 
     @Builder
-    public TeamMember(Team team, User user, TeamMemberRole roleType, String position) {
-        this.team = team;
+    public UserXpHistory(User user, Hackathon hackathon, XpType type) {
         this.user = user;
-        this.roleType = roleType != null ? roleType : TeamMemberRole.MEMBER;
-        this.position = position;
-    }
-
-    public void updatePosition(String position) {
-        this.position = position;
-    }
-
-    public void leave() {
-        this.leftAt = LocalDateTime.now();
+        this.hackathon = hackathon;
+        this.type = type;
+        this.amount = type.getAmount();
     }
 }
