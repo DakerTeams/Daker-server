@@ -41,6 +41,7 @@ public class SecurityConfig {
             "/rankings",
             "/rankings/participation",
             "/stats",
+            "/tags",
             "/swagger-ui/**",
             "/v3/api-docs/**"
     };
