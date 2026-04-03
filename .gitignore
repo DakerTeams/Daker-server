@@ -9,6 +9,7 @@ src/main/generated/
 *.iws
 *.ipr
 out/
+bin/
 
 # VS Code
 .vscode/
