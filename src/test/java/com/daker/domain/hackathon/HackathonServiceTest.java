@@ -128,7 +128,7 @@ class HackathonServiceTest {
         Hackathon h = mockOpenHackathon();
         Page<Hackathon> page = new PageImpl<>(List.of(h));
 
-        given(hackathonRepository.findAllWithFilters(any(), any(), any(), any())).willReturn(page);
+        given(hackathonRepository.findAllWithFilters(any(), anyBoolean(), any(), any(), any())).willReturn(page);
         given(hackathonTagRepository.findAllByHackathonId(h.getId())).willReturn(List.of());
         given(teamRepository.findAllByHackathonId(h.getId())).willReturn(List.of());
 
@@ -149,7 +149,7 @@ class HackathonServiceTest {
         team.getMembers().add(member);
 
         Page<Hackathon> page = new PageImpl<>(List.of(h));
-        given(hackathonRepository.findAllWithFilters(any(), any(), any(), any())).willReturn(page);
+        given(hackathonRepository.findAllWithFilters(any(), anyBoolean(), any(), any(), any())).willReturn(page);
         given(hackathonTagRepository.findAllByHackathonId(h.getId())).willReturn(List.of());
         given(teamRepository.findAllByHackathonId(h.getId())).willReturn(List.of(team));
 
