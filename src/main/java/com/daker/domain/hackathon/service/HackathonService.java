@@ -40,6 +40,11 @@ public class HackathonService {
     public PageResponse<HackathonSummaryResponse> getHackathons(HackathonStatus status, String tag, String q, Pageable pageable) {
         Page<Hackathon> hackathons = hackathonRepository.findAllWithFilters(status, status == null, tag, q, pageable);
 
+        // 태그 필터 결과가 없으면 태그 없이 fallback
+        if (tag != null && hackathons.isEmpty()) {
+            hackathons = hackathonRepository.findAllWithFilters(status, status == null, null, q, pageable);
+        }
+
         Page<HackathonSummaryResponse> result = hackathons.map(hackathon -> {
             List<String> tags = hackathonTagRepository.findAllByHackathonId(hackathon.getId())
                     .stream().map(ht -> ht.getTag().getName()).toList();
