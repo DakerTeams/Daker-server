@@ -38,7 +38,7 @@ public class HackathonService {
 
     @Transactional(readOnly = true)
     public PageResponse<HackathonSummaryResponse> getHackathons(HackathonStatus status, String tag, String q, Pageable pageable) {
-        Page<Hackathon> hackathons = hackathonRepository.findAllWithFilters(status, tag, q, pageable);
+        Page<Hackathon> hackathons = hackathonRepository.findAllWithFilters(status, status == null, tag, q, pageable);
 
         Page<HackathonSummaryResponse> result = hackathons.map(hackathon -> {
             List<String> tags = hackathonTagRepository.findAllByHackathonId(hackathon.getId())

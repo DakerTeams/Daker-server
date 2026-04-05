@@ -21,10 +21,12 @@ public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
            "LEFT JOIN ht.tag t " +
            "WHERE h.deleted = false " +
            "AND (:status IS NULL OR h.status = :status) " +
+           "AND (:excludeEnded = false OR h.status <> 'ENDED') " +
            "AND (:tag IS NULL OR t.name = :tag) " +
            "AND (:q IS NULL OR h.title LIKE %:q% OR h.organizer LIKE %:q%)")
     Page<Hackathon> findAllWithFilters(
             @Param("status") HackathonStatus status,
+            @Param("excludeEnded") boolean excludeEnded,
             @Param("tag") String tag,
             @Param("q") String q,
             Pageable pageable
