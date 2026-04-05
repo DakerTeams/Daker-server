@@ -1,6 +1,7 @@
 package com.daker.global.scheduler;
 
 import com.daker.domain.hackathon.repository.HackathonRepository;
+import com.daker.domain.team.repository.TeamRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 public class HackathonStatusScheduler {
 
     private final HackathonRepository hackathonRepository;
+    private final TeamRepository teamRepository;
 
     @Scheduled(cron = "0 * * * * *") // 매분 0초마다 실행
     @Transactional
@@ -26,10 +28,13 @@ public class HackathonStatusScheduler {
         int closed   = hackathonRepository.updateToClosed(now);
         int ended    = hackathonRepository.updateToEnded(now);
 
+        // CLOSED 또는 ENDED 상태인 해커톤에 속한 OPEN 팀을 일괄 마감
+        int closedTeams = teamRepository.closeTeamsOfFinishedHackathons();
+
         int total = upcoming + open + closed + ended;
-        if (total > 0) {
-            log.info("[HackathonScheduler] status 갱신: UPCOMING={}, OPEN={}, CLOSED={}, ENDED={}",
-                    upcoming, open, closed, ended);
+        if (total > 0 || closedTeams > 0) {
+            log.info("[HackathonScheduler] status 갱신: UPCOMING={}, OPEN={}, CLOSED={}, ENDED={}, 팀 마감={}",
+                    upcoming, open, closed, ended, closedTeams);
         }
     }
 }

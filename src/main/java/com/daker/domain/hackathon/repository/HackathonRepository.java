@@ -54,4 +54,5 @@ public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
     @Modifying
     @Query("UPDATE Hackathon h SET h.status = 'ENDED' WHERE h.deleted = false AND h.status <> 'ENDED' AND :now >= h.endDate")
     int updateToEnded(@Param("now") LocalDateTime now);
+
 }

@@ -148,7 +148,7 @@ public class TeamService {
             throw new CustomException(ErrorCode.NOT_TEAM_LEADER);
         }
 
-        if (team.getHackathon() != null && !team.getHackathon().isRegistrationOpen()) {
+        if (team.getHackathon() != null && team.getHackathon().isEnded()) {
             throw new CustomException(ErrorCode.TEAM_APPLICATION_CLOSED);
         }
 
@@ -169,7 +169,7 @@ public class TeamService {
             throw new CustomException(ErrorCode.TEAM_ALREADY_EXISTS);
         }
 
-        if (team.getHackathon() != null && !team.getHackathon().isRegistrationOpen()) {
+        if (team.getHackathon() != null && team.getHackathon().isEnded()) {
             throw new CustomException(ErrorCode.TEAM_APPLICATION_CLOSED);
         }
 
