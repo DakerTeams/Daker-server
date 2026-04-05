@@ -63,7 +63,6 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_SSH_KEY }}
           port: 22
-          envs: DOCKERHUB_USERNAME
           script_stop: true
           script: |
             set -e
@@ -72,7 +71,6 @@ jobs:
             DOCKERHUB_USERNAME=seodongbe docker-compose -f docker-compose.prod.yml up -d --no-build app
 
       - name: Health check
-        if: ${{ secrets.SERVER_HEALTHCHECK_URL != '' }}
         run: |
           sleep 20
-          curl --fail --silent --show-error --max-time 10 "${{ secrets.SERVER_HEALTHCHECK_URL }}"
+          curl --fail --silent --show-error --max-time 10 "http://${{ secrets.EC2_HOST }}:8080/stats"
