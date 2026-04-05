@@ -34,6 +34,8 @@ public class SecurityConfig {
             "/auth/signup",
             "/auth/login",
             "/auth/refresh",
+            "/auth/github/login",
+            "/auth/github/callback",
             "/hackathons",
             "/hackathons/**",
             "/teams",
