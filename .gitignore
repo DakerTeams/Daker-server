@@ -24,9 +24,7 @@ logs/
 # Environment
 .env
 application-local.yml
-application-prod.yml
 **/application-local.yml
-**/application-prod.yml
 
 # Compiled class files
 *.class
