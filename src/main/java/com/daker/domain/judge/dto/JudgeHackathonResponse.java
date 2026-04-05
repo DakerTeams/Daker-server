@@ -28,12 +28,12 @@ public class JudgeHackathonResponse {
         private final LocalDateTime startDate;
         private final LocalDateTime endDate;
 
-        public HackathonItem(Hackathon hackathon, long reviewedCount) {
+        public HackathonItem(Hackathon hackathon, long submissionCount, long reviewedCount) {
             this.id = hackathon.getId();
             this.title = hackathon.getTitle();
             this.status = hackathon.getStatus().name();
             this.scoreType = hackathon.getScoreType() != null ? hackathon.getScoreType().name() : null;
-            this.submissionCount = 0; // submissions 도메인 구현 후 연결
+            this.submissionCount = submissionCount;
             this.reviewedCount = reviewedCount;
             this.startDate = hackathon.getStartDate();
             this.endDate = hackathon.getEndDate();

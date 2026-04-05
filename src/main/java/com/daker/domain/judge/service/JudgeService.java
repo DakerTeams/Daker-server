@@ -24,6 +24,7 @@ import com.daker.global.exception.ErrorCode;
 import com.daker.global.infra.S3Uploader;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,8 +51,13 @@ public class JudgeService {
         List<JudgeHackathonResponse.HackathonItem> items = assignments.stream()
                 .map(assignment -> {
                     Hackathon hackathon = assignment.getHackathon();
+                    long submissionCount = submissionRepository.findAllLatest(
+                            hackathon.getId(),
+                            null,
+                            Pageable.unpaged()
+                    ).getTotalElements();
                     long reviewedCount = judgeEvaluationRepository.countByHackathonIdAndJudgeId(hackathon.getId(), userId);
-                    return new JudgeHackathonResponse.HackathonItem(hackathon, reviewedCount);
+                    return new JudgeHackathonResponse.HackathonItem(hackathon, submissionCount, reviewedCount);
                 })
                 .toList();
 
@@ -109,6 +115,14 @@ public class JudgeService {
         Hackathon hackathon = hackathonRepository.findByIdAndDeletedFalse(hackathonId)
                 .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
 
+        if (hackathon.getScoreType() != com.daker.domain.hackathon.domain.ScoreType.SCORE) {
+            throw new CustomException(ErrorCode.SCORE_TYPE_MISMATCH);
+        }
+
+        if (hackathon.getCriteriaList() == null || hackathon.getCriteriaList().isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
         if (!hackathonJudgeRepository.existsByHackathonIdAndUserId(hackathonId, userId)) {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
@@ -119,6 +133,10 @@ public class JudgeService {
 
         User judge = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        if (request.getScores() == null || request.getScores().size() != hackathon.getCriteriaList().size()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
 
         double totalScore = request.getScores().stream()
                 .mapToDouble(JudgeScoreRequest.ScoreItem::getScore)
