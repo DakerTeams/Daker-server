@@ -2,6 +2,7 @@ package com.daker.domain.chat.controller;
 
 import com.daker.domain.chat.dto.ChatMessageRequest;
 import com.daker.domain.chat.dto.ChatMessageResponse;
+import com.daker.domain.chat.dto.ChatRoomResponse;
 import com.daker.domain.chat.service.ChatService;
 import com.daker.global.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -9,10 +10,7 @@ import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.List;
@@ -34,6 +32,24 @@ public class ChatController {
     ) {
         Long userId = Long.parseLong(principal.getName());
         chatService.sendMessage(hackathonId, userId, request);
+    }
+
+    // 채팅방 참가
+    @PostMapping("/hackathons/{hackathonId}/chat/join")
+    public ApiResponse<Void> joinChat(
+            @PathVariable Long hackathonId,
+            @AuthenticationPrincipal String userId
+    ) {
+        chatService.joinChat(hackathonId, Long.parseLong(userId));
+        return ApiResponse.ok(null);
+    }
+
+    // 내가 참가한 채팅방 목록
+    @GetMapping("/hackathons/me/chat")
+    public ApiResponse<List<ChatRoomResponse>> getMyRooms(
+            @AuthenticationPrincipal String userId
+    ) {
+        return ApiResponse.ok(chatService.getMyRooms(Long.parseLong(userId)));
     }
 
     // 이전 메시지 조회 (최신순, cursor 방식)

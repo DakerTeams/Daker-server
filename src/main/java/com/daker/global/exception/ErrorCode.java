@@ -62,6 +62,9 @@ public enum ErrorCode {
     CANNOT_VOTE_OWN_TEAM(HttpStatus.FORBIDDEN, "자신이 속한 팀에는 투표할 수 없습니다."),
     VOTE_RESULT_NOT_PUBLIC(HttpStatus.FORBIDDEN, "투표 결과는 해커톤 종료 후 공개됩니다."),
 
+    // 채팅 (CHAT)
+    ALREADY_JOINED_CHAT(HttpStatus.CONFLICT, "이미 참가한 채팅방입니다."),
+
     // 제출 (SUBMISSION)
     SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "제출물을 찾을 수 없습니다."),
     ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 제출한 팀입니다."),
