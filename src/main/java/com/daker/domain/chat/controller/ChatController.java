@@ -30,7 +30,7 @@ public class ChatController {
             @Payload ChatMessageRequest request,
             Principal principal
     ) {
-        Long userId = Long.parseLong(principal.getName());
+        Long userId = Long.valueOf(principal.getName());
         chatService.sendMessage(hackathonId, userId, request);
     }
 
@@ -38,18 +38,28 @@ public class ChatController {
     @PostMapping("/hackathons/{hackathonId}/chat/join")
     public ApiResponse<Void> joinChat(
             @PathVariable Long hackathonId,
-            @AuthenticationPrincipal String userId
+            @AuthenticationPrincipal Long userId
     ) {
-        chatService.joinChat(hackathonId, Long.parseLong(userId));
+        chatService.joinChat(hackathonId, userId);
+        return ApiResponse.ok(null);
+    }
+
+    // 채팅방 나가기
+    @DeleteMapping("/hackathons/{hackathonId}/chat/leave")
+    public ApiResponse<Void> leaveChat(
+            @PathVariable Long hackathonId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        chatService.leaveChat(hackathonId, userId);
         return ApiResponse.ok(null);
     }
 
     // 내가 참가한 채팅방 목록
     @GetMapping("/hackathons/me/chat")
     public ApiResponse<List<ChatRoomResponse>> getMyRooms(
-            @AuthenticationPrincipal String userId
+            @AuthenticationPrincipal Long userId
     ) {
-        return ApiResponse.ok(chatService.getMyRooms(Long.parseLong(userId)));
+        return ApiResponse.ok(chatService.getMyRooms(userId));
     }
 
     // 이전 메시지 조회 (최신순, cursor 방식)

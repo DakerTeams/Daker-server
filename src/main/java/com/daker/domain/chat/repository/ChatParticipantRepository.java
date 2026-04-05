@@ -11,6 +11,8 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
 
     boolean existsByHackathonIdAndUserId(Long hackathonId, Long userId);
 
+    void deleteByHackathonIdAndUserId(Long hackathonId, Long userId);
+
     @Query("SELECT cp FROM ChatParticipant cp JOIN FETCH cp.hackathon WHERE cp.user.id = :userId ORDER BY cp.joinedAt DESC")
     List<ChatParticipant> findByUserIdWithHackathon(@Param("userId") Long userId);
 }

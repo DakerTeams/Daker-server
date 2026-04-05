@@ -64,6 +64,7 @@ public enum ErrorCode {
 
     // 채팅 (CHAT)
     ALREADY_JOINED_CHAT(HttpStatus.CONFLICT, "이미 참가한 채팅방입니다."),
+    CHAT_PARTICIPANT_NOT_FOUND(HttpStatus.NOT_FOUND, "참가하지 않은 채팅방입니다."),
 
     // 제출 (SUBMISSION)
     SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "제출물을 찾을 수 없습니다."),

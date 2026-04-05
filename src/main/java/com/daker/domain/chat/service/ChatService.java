@@ -70,6 +70,14 @@ public class ChatService {
                 .build());
     }
 
+    @Transactional
+    public void leaveChat(Long hackathonId, Long userId) {
+        if (!chatParticipantRepository.existsByHackathonIdAndUserId(hackathonId, userId)) {
+            throw new CustomException(ErrorCode.CHAT_PARTICIPANT_NOT_FOUND);
+        }
+        chatParticipantRepository.deleteByHackathonIdAndUserId(hackathonId, userId);
+    }
+
     @Transactional(readOnly = true)
     public List<ChatRoomResponse> getMyRooms(Long userId) {
         return chatParticipantRepository.findByUserIdWithHackathon(userId).stream()
