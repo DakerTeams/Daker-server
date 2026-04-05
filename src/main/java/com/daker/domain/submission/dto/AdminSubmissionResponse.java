@@ -37,11 +37,15 @@ public class AdminSubmissionResponse {
 
     @Getter
     public static class SubmissionItemSummary {
+        private final Long itemId;
         private final String fileName;
+        private final String originalFileName;
         private final String valueUrl;
 
         public SubmissionItemSummary(SubmissionItem item) {
+            this.itemId = item.getId();
             this.fileName = item.getFileName();
+            this.originalFileName = item.getOriginalFileName();
             this.valueUrl = item.getValueUrl();
         }
     }

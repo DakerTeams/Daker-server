@@ -1,3 +1,5 @@
+
+
 package com.daker.domain.submission;
 
 import com.daker.domain.hackathon.domain.Hackathon;
@@ -8,7 +10,9 @@ import com.daker.domain.judge.repository.JudgeEvaluationRepository;
 import com.daker.domain.submission.domain.Submission;
 import com.daker.domain.submission.domain.SubmissionItem;
 import com.daker.domain.submission.domain.SubmissionStatus;
+import com.daker.domain.submission.dto.AdminSubmissionHackathonSummaryResponse;
 import com.daker.domain.submission.dto.AdminSubmissionResponse;
+import com.daker.domain.submission.dto.DownloadFilePayload;
 import com.daker.domain.submission.dto.SubmissionCreateResponse;
 import com.daker.domain.submission.dto.SubmissionHistoryResponse;
 import com.daker.domain.submission.dto.SubmissionStatusResponse;
@@ -33,6 +37,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.mock.web.MockMultipartFile;
 
@@ -500,6 +505,95 @@ class SubmissionServiceTest {
                 submissionService.getAdminSubmissions(1L, null, PageRequest.of(0, 20));
 
         assertThat(response.getItems().get(0).getReviewStatus()).isEqualTo("reviewed");
+    }
+
+    @Test
+    @DisplayName("관리자 제출물 해커톤 요약 목록 조회 성공")
+    void getAdminSubmissionHackathons_success() {
+        Hackathon hackathon = mockHackathon(LocalDateTime.now().plusDays(1));
+        User user = mockUser(1L);
+        Team team1 = mockTeam(1L, hackathon, user);
+        Team team2 = mockTeam(2L, hackathon, user);
+        Submission submission1 = mockSubmission(hackathon, team1, user, 1, true);
+        Submission submission2 = mockSubmission(hackathon, team2, user, 2, true);
+
+        given(submissionRepository.findAllLatest(null, null, Pageable.unpaged()))
+                .willReturn(new PageImpl<>(List.of(submission1, submission2)));
+        given(submissionItemRepository.findAllBySubmissionId(1L)).willReturn(List.of(
+                SubmissionItem.builder()
+                        .submission(submission1)
+                        .fileName("key-1")
+                        .originalFileName("team1.pdf")
+                        .isFinal(true)
+                        .build()
+        ));
+        given(submissionItemRepository.findAllBySubmissionId(2L)).willReturn(List.of(
+                SubmissionItem.builder()
+                        .submission(submission2)
+                        .fileName("key-2")
+                        .originalFileName("team2.pdf")
+                        .isFinal(true)
+                        .build()
+        ));
+
+        List<AdminSubmissionHackathonSummaryResponse> response = submissionService.getAdminSubmissionHackathons();
+
+        assertThat(response).hasSize(1);
+        assertThat(response.get(0).getHackathonName()).isEqualTo("Test Hackathon");
+        assertThat(response.get(0).getSubmittedTeamCount()).isEqualTo(2);
+        assertThat(response.get(0).getTotalFileCount()).isEqualTo(2);
+    }
+
+    @Test
+    @DisplayName("관리자 제출물 개별 다운로드 zip 생성 성공")
+    void downloadSubmissionArchive_success() {
+        Hackathon hackathon = mockHackathon(LocalDateTime.now().plusDays(1));
+        User user = mockUser(1L);
+        Team team = mockTeam(1L, hackathon, user);
+        Submission submission = mockSubmission(hackathon, team, user);
+        SubmissionItem item = SubmissionItem.builder()
+                .submission(submission)
+                .fileName("submissions/key-1")
+                .originalFileName("demo.pdf")
+                .isFinal(true)
+                .build();
+
+        given(submissionRepository.findById(1L)).willReturn(Optional.of(submission));
+        given(submissionItemRepository.findAllBySubmissionId(1L)).willReturn(List.of(item));
+        given(s3Uploader.download("submissions/key-1")).willReturn("pdf-bytes".getBytes());
+
+        DownloadFilePayload payload = submissionService.downloadSubmissionArchive(1L);
+
+        assertThat(payload.getContentType()).isEqualTo("application/zip");
+        assertThat(payload.getFileName()).contains("submission.zip");
+        assertThat(payload.getBytes()).isNotEmpty();
+        verify(s3Uploader).download("submissions/key-1");
+    }
+
+    @Test
+    @DisplayName("관리자 제출물 해커톤 전체 다운로드 zip 생성 성공")
+    void downloadHackathonSubmissionArchive_success() {
+        Hackathon hackathon = mockHackathon(LocalDateTime.now().plusDays(1));
+        User user = mockUser(1L);
+        Team team = mockTeam(1L, hackathon, user);
+        Submission submission = mockSubmission(hackathon, team, user);
+        SubmissionItem item = SubmissionItem.builder()
+                .submission(submission)
+                .fileName("submissions/key-1")
+                .originalFileName("demo.pdf")
+                .isFinal(true)
+                .build();
+
+        given(submissionRepository.findAllLatest(1L, null, Pageable.unpaged()))
+                .willReturn(new PageImpl<>(List.of(submission)));
+        given(submissionItemRepository.findAllBySubmissionId(1L)).willReturn(List.of(item));
+        given(s3Uploader.download("submissions/key-1")).willReturn("pdf-bytes".getBytes());
+
+        DownloadFilePayload payload = submissionService.downloadHackathonSubmissionArchive(1L);
+
+        assertThat(payload.getContentType()).isEqualTo("application/zip");
+        assertThat(payload.getFileName()).contains("all_submissions.zip");
+        assertThat(payload.getBytes()).isNotEmpty();
     }
 
     // -------------------------------------------------------------------------
