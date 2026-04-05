@@ -3,6 +3,7 @@ package com.daker.domain.judge.controller;
 import com.daker.domain.judge.dto.JudgeHackathonResponse;
 import com.daker.domain.judge.dto.JudgeScoreRequest;
 import com.daker.domain.judge.dto.JudgeScoreResponse;
+import com.daker.domain.judge.dto.JudgeSubmissionResponse;
 import com.daker.domain.judge.dto.JudgeTeamsResponse;
 import com.daker.domain.judge.service.JudgeService;
 import com.daker.global.response.ApiResponse;
@@ -33,6 +34,15 @@ public class JudgeController {
             @AuthenticationPrincipal Long userId
     ) {
         return ApiResponse.ok(judgeService.getTeamsForHackathon(hackathonId, userId));
+    }
+
+    @GetMapping("/hackathons/{hackathonId}/teams/{teamId}/submission")
+    public ApiResponse<JudgeSubmissionResponse> getSubmission(
+            @PathVariable Long hackathonId,
+            @PathVariable Long teamId,
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.ok(judgeService.getSubmissionForTeam(hackathonId, teamId, userId));
     }
 
     @ResponseStatus(HttpStatus.CREATED)
