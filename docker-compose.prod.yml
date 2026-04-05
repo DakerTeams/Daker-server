@@ -15,9 +15,9 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - AWS_ACCESS_KEY=${AWS_ACCESS_KEY}
       - AWS_SECRET_KEY=${AWS_SECRET_KEY}
-      - AWS_REGION=ap-southeast-2
-      - AWS_S3_BUCKET=web-portfolio-s3-421856467388-ap-southeast-2-an
-      - AWS_S3_FOLDER=daker
+      - AWS_REGION=${AWS_REGION}
+      - AWS_S3_BUCKET=${AWS_S3_BUCKET}
+      - AWS_S3_FOLDER=${AWS_S3_FOLDER}
     depends_on:
       mysql:
         condition: service_healthy
