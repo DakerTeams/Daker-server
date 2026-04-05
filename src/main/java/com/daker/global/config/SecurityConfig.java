@@ -74,7 +74,8 @@ public class SecurityConfig {
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
                 "https://daker-front-pfygbaonz-sd-gifs-projects.vercel.app",
-                "https://daker-front.vercel.app"
+                "https://daker-front.vercel.app",
+                "https://15-164-250-113.sslip.io"
         ));
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
