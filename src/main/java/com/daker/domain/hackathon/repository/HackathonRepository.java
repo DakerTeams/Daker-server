@@ -10,11 +10,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
 
     Optional<Hackathon> findByIdAndDeletedFalse(Long id);
+    List<Hackathon> findAllByDeletedFalse();
+    Page<Hackathon> findAllByDeletedFalse(Pageable pageable);
 
     @Query("SELECT DISTINCT h FROM Hackathon h " +
            "LEFT JOIN h.hackathonTags ht " +
@@ -32,12 +35,9 @@ public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
             Pageable pageable
     );
 
-    // 어드민 전체 목록 (삭제 포함)
-    Page<Hackathon> findAll(Pageable pageable);
-
     long countByStatusAndDeletedFalse(HackathonStatus status);
 
-    long countByCreatedAtAfter(LocalDateTime dateTime);
+    long countByCreatedAtAfterAndDeletedFalse(LocalDateTime dateTime);
 
     @Modifying
     @Query("UPDATE Hackathon h SET h.status = 'UPCOMING' WHERE h.deleted = false AND h.status <> 'UPCOMING' AND :now < h.registrationStartDate")

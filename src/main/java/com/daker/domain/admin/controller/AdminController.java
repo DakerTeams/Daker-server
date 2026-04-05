@@ -66,6 +66,12 @@ public class AdminController {
         return ApiResponse.ok(adminService.updateHackathon(hackathonId, request));
     }
 
+    @DeleteMapping("/hackathons/{hackathonId}")
+    public ApiResponse<java.util.Map<String, String>> deleteHackathon(@PathVariable Long hackathonId) {
+        adminService.deleteHackathon(hackathonId);
+        return ApiResponse.ok(java.util.Map.of("message", "해커톤이 삭제되었습니다."));
+    }
+
     @PatchMapping("/hackathons/{hackathonId}/close")
     public ApiResponse<AdminHackathonCloseResponse> closeHackathon(@PathVariable Long hackathonId) {
         return ApiResponse.ok(adminService.closeHackathon(hackathonId));

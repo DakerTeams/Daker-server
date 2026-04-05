@@ -1,5 +1,6 @@
 package com.daker.domain.admin.dto;
 
+import com.daker.domain.hackathon.domain.HackathonStatus;
 import com.daker.domain.hackathon.domain.ScoreType;
 import lombok.Getter;
 
@@ -14,6 +15,7 @@ public class HackathonUpdateRequest {
     private String description;
     private String thumbnailUrl;
     private String organizerName;
+    private HackathonStatus status;
     private ScoreType scoreType;
     private LocalDateTime startAt;
     private LocalDateTime endAt;
