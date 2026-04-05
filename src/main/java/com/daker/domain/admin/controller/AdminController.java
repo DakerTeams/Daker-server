@@ -2,18 +2,23 @@ package com.daker.domain.admin.controller;
 
 import com.daker.domain.admin.dto.*;
 import com.daker.domain.admin.service.AdminService;
+import com.daker.domain.submission.dto.AdminSubmissionHackathonSummaryResponse;
 import com.daker.domain.submission.dto.AdminSubmissionResponse;
+import com.daker.domain.submission.dto.DownloadFilePayload;
 import com.daker.domain.submission.service.SubmissionService;
 import com.daker.domain.user.domain.Role;
 import com.daker.global.response.ApiResponse;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import com.daker.global.response.PageResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -120,6 +125,28 @@ public class AdminController {
                 PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id"))));
     }
 
+    @GetMapping("/submissions/hackathons")
+    public ApiResponse<java.util.List<AdminSubmissionHackathonSummaryResponse>> getSubmissionHackathons() {
+        return ApiResponse.ok(submissionService.getAdminSubmissionHackathons());
+    }
+
+    @GetMapping("/submissions/hackathons/{hackathonId}")
+    public ApiResponse<java.util.List<AdminSubmissionResponse>> getSubmissionHackathonDetails(
+            @PathVariable Long hackathonId
+    ) {
+        return ApiResponse.ok(submissionService.getAdminSubmissionsByHackathon(hackathonId));
+    }
+
+    @GetMapping("/submissions/{submissionId}/download")
+    public ResponseEntity<byte[]> downloadSubmission(@PathVariable Long submissionId) {
+        return buildDownloadResponse(submissionService.downloadSubmissionArchive(submissionId));
+    }
+
+    @GetMapping("/submissions/hackathons/{hackathonId}/download-all")
+    public ResponseEntity<byte[]> downloadSubmissionHackathonArchive(@PathVariable Long hackathonId) {
+        return buildDownloadResponse(submissionService.downloadHackathonSubmissionArchive(hackathonId));
+    }
+
     @PatchMapping("/users/{userId}/judges")
     public ApiResponse<AdminUserResponse> updateJudgeRole(
             @PathVariable Long userId,
@@ -144,5 +171,12 @@ public class AdminController {
     ) {
         adminService.removeJudge(hackathonId, userId);
         return ApiResponse.ok(null);
+    }
+
+    private ResponseEntity<byte[]> buildDownloadResponse(DownloadFilePayload payload) {
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(payload.getContentType()))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + payload.getFileName() + "\"")
+                .body(payload.getBytes());
     }
 }

@@ -6,7 +6,9 @@ import com.daker.domain.judge.repository.JudgeEvaluationRepository;
 import com.daker.domain.submission.domain.Submission;
 import com.daker.domain.submission.domain.SubmissionItem;
 import com.daker.domain.submission.domain.SubmissionStatus;
+import com.daker.domain.submission.dto.AdminSubmissionHackathonSummaryResponse;
 import com.daker.domain.submission.dto.AdminSubmissionResponse;
+import com.daker.domain.submission.dto.DownloadFilePayload;
 import com.daker.domain.submission.dto.SubmissionCreateResponse;
 import com.daker.domain.submission.dto.SubmissionHistoryResponse;
 import com.daker.domain.submission.dto.SubmissionStatusResponse;
@@ -28,9 +30,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 @Service
 @RequiredArgsConstructor
@@ -191,5 +200,143 @@ public class SubmissionService {
                     .existsByHackathonIdAndTeamId(submission.getHackathon().getId(), submission.getTeam().getId());
             return new AdminSubmissionResponse(submission, items, reviewed);
         }));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminSubmissionHackathonSummaryResponse> getAdminSubmissionHackathons() {
+        List<Submission> submissions = submissionRepository.findAllLatest(null, null, Pageable.unpaged()).getContent();
+        Map<Long, List<Submission>> byHackathon = new LinkedHashMap<>();
+
+        submissions.stream()
+                .sorted(Comparator.comparing(Submission::getSubmittedAt).reversed())
+                .forEach(submission -> byHackathon
+                        .computeIfAbsent(submission.getHackathon().getId(), ignored -> new java.util.ArrayList<>())
+                        .add(submission));
+
+        return byHackathon.values().stream()
+                .map(items -> {
+                    Submission first = items.get(0);
+                    int totalFileCount = items.stream()
+                            .mapToInt(submission -> submissionItemRepository.findAllBySubmissionId(submission.getId()).size())
+                            .sum();
+
+                    LocalDateTime latestSubmittedAt = items.stream()
+                            .map(Submission::getSubmittedAt)
+                            .filter(java.util.Objects::nonNull)
+                            .max(LocalDateTime::compareTo)
+                            .orElse(null);
+
+                    return AdminSubmissionHackathonSummaryResponse.builder()
+                            .hackathonId(first.getHackathon().getId())
+                            .hackathonName(first.getHackathon().getTitle())
+                            .submittedTeamCount(items.size())
+                            .totalFileCount(totalFileCount)
+                            .latestSubmittedAt(latestSubmittedAt)
+                            .build();
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminSubmissionResponse> getAdminSubmissionsByHackathon(Long hackathonId) {
+        return submissionRepository.findAllLatest(hackathonId, null, Pageable.unpaged()).getContent().stream()
+                .sorted(Comparator.comparing(Submission::getSubmittedAt).reversed())
+                .map(submission -> {
+                    List<SubmissionItem> items = submissionItemRepository.findAllBySubmissionId(submission.getId());
+                    boolean reviewed = judgeEvaluationRepository
+                            .existsByHackathonIdAndTeamId(submission.getHackathon().getId(), submission.getTeam().getId());
+                    return new AdminSubmissionResponse(submission, items, reviewed);
+                })
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public DownloadFilePayload downloadSubmissionArchive(Long submissionId) {
+        Submission submission = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new CustomException(ErrorCode.SUBMISSION_NOT_FOUND));
+
+        List<SubmissionItem> items = submissionItemRepository.findAllBySubmissionId(submissionId);
+        byte[] bytes = buildSubmissionZip(
+                submission.getHackathon().getTitle(),
+                submission.getTeam().getName(),
+                items
+        );
+
+        String safeHackathonName = sanitizeFileName(submission.getHackathon().getTitle());
+        String safeTeamName = sanitizeFileName(submission.getTeam().getName());
+        String fileName = safeHackathonName + "_" + safeTeamName + "_submission.zip";
+
+        return new DownloadFilePayload(bytes, fileName, "application/zip");
+    }
+
+    @Transactional(readOnly = true)
+    public DownloadFilePayload downloadHackathonSubmissionArchive(Long hackathonId) {
+        List<Submission> submissions = submissionRepository.findAllLatest(hackathonId, null, Pageable.unpaged()).getContent();
+        if (submissions.isEmpty()) {
+            throw new CustomException(ErrorCode.SUBMISSION_NOT_FOUND);
+        }
+
+        String hackathonName = submissions.get(0).getHackathon().getTitle();
+
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+
+            for (Submission submission : submissions) {
+                List<SubmissionItem> items = submissionItemRepository.findAllBySubmissionId(submission.getId());
+                addSubmissionEntriesToZip(
+                        zipOutputStream,
+                        sanitizeFileName(submission.getTeam().getName()),
+                        items
+                );
+            }
+
+            zipOutputStream.finish();
+            String fileName = sanitizeFileName(hackathonName) + "_all_submissions.zip";
+            return new DownloadFilePayload(outputStream.toByteArray(), fileName, "application/zip");
+        } catch (IOException exception) {
+            throw new RuntimeException("제출물 압축 다운로드에 실패했습니다.", exception);
+        }
+    }
+
+    private byte[] buildSubmissionZip(String hackathonName, String teamName, List<SubmissionItem> items) {
+        try (ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+             ZipOutputStream zipOutputStream = new ZipOutputStream(outputStream)) {
+
+            addSubmissionEntriesToZip(zipOutputStream, sanitizeFileName(teamName), items);
+            zipOutputStream.finish();
+            return outputStream.toByteArray();
+        } catch (IOException exception) {
+            throw new RuntimeException(
+                    "제출물 압축 다운로드에 실패했습니다. hackathon=" + hackathonName + ", team=" + teamName,
+                    exception
+            );
+        }
+    }
+
+    private void addSubmissionEntriesToZip(ZipOutputStream zipOutputStream, String folderName, List<SubmissionItem> items)
+            throws IOException {
+        int linkIndex = 1;
+
+        for (SubmissionItem item : items) {
+            if (item.getFileName() != null && !item.getFileName().isBlank()) {
+                String originalName = item.getOriginalFileName() != null && !item.getOriginalFileName().isBlank()
+                        ? item.getOriginalFileName()
+                        : "file-" + item.getId();
+                ZipEntry zipEntry = new ZipEntry(folderName + "/" + sanitizeFileName(originalName));
+                zipOutputStream.putNextEntry(zipEntry);
+                zipOutputStream.write(s3Uploader.download(item.getFileName()));
+                zipOutputStream.closeEntry();
+            } else if (item.getValueUrl() != null && !item.getValueUrl().isBlank()) {
+                String entryName = folderName + "/link-" + linkIndex++ + ".txt";
+                ZipEntry zipEntry = new ZipEntry(entryName);
+                zipOutputStream.putNextEntry(zipEntry);
+                zipOutputStream.write(item.getValueUrl().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                zipOutputStream.closeEntry();
+            }
+        }
+    }
+
+    private String sanitizeFileName(String value) {
+        return value == null ? "unknown" : value.replaceAll("[\\\\/:*?\"<>|]", "_");
     }
 }
