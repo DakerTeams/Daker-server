@@ -22,6 +22,9 @@ public enum ErrorCode {
     TOKEN_MISSING(HttpStatus.UNAUTHORIZED, "Authorization 헤더가 누락되었습니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 가입된 이메일입니다."),
     DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "이미 사용 중인 닉네임입니다."),
+    GITHUB_AUTH_FAILED(HttpStatus.UNAUTHORIZED, "GitHub 로그인 처리에 실패했습니다."),
+    GITHUB_EMAIL_NOT_FOUND(HttpStatus.BAD_REQUEST, "GitHub 계정 이메일을 확인할 수 없습니다."),
+    GITHUB_STATE_INVALID(HttpStatus.BAD_REQUEST, "GitHub 로그인 인증 상태가 유효하지 않습니다."),
 
     // 유저 (USER)
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다."),

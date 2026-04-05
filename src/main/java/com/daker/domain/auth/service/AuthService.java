@@ -57,10 +57,15 @@ public class AuthService {
         User user = userRepository.findByEmailAndAccountStatus(request.getEmail(), AccountStatus.ACTIVE)
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_CREDENTIALS));
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (user.getPassword() == null || !passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new CustomException(ErrorCode.INVALID_CREDENTIALS);
         }
 
+        return issueLogin(user);
+    }
+
+    @Transactional
+    public LoginResponse issueLogin(User user) {
         String accessToken = jwtProvider.generateAccessToken(user.getId(), user.getRole().name());
         String refreshToken = jwtProvider.generateRefreshToken(user.getId());
         refreshTokenRepository.save(user.getId(), refreshToken, jwtProperties.getRefreshExpiration());
