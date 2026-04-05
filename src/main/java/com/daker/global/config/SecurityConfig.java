@@ -59,8 +59,8 @@ public class SecurityConfig {
                 .exceptionHandling(ex ->
                         ex.authenticationEntryPoint(jwtAuthenticationEntryPoint))
                 .authorizeHttpRequests(auth -> auth
-                        // 투표는 로그인 필수 (PUBLIC_URLS의 /hackathons/** 보다 먼저 선언)
-                        .requestMatchers(HttpMethod.POST, "/hackathons/*/votes").authenticated()
+                        // 투표는 심사위원만 (PUBLIC_URLS의 /hackathons/** 보다 먼저 선언)
+                        .requestMatchers(HttpMethod.POST, "/hackathons/*/votes").hasRole("JUDGE")
                         .requestMatchers(PUBLIC_URLS).permitAll()
                         .anyRequest().authenticated()
                 )
