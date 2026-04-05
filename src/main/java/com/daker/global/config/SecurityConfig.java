@@ -46,7 +46,7 @@ public class SecurityConfig {
             "/tags",
             "/swagger-ui/**",
             "/v3/api-docs/**",
-            "/ws/chat/**"
+            "/ws/**"
     };
 
     @Bean
