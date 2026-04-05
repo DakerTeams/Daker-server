@@ -44,7 +44,7 @@ public class RankingService {
         List<ParticipationAccumulator> sorted = buildAccumulators(period).values().stream()
                 .sorted(Comparator
                         .comparingInt(ParticipationAccumulator::getCompletedCount).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
+                        .thenComparing(Comparator.comparingInt(ParticipationAccumulator::getParticipationCount).reversed())
                         .thenComparing(ParticipationAccumulator::getNickname))
                 .toList();
 
@@ -65,7 +65,7 @@ public class RankingService {
         List<ParticipationAccumulator> participationSorted = accMap.values().stream()
                 .sorted(Comparator
                         .comparingInt(ParticipationAccumulator::getCompletedCount).reversed()
-                        .thenComparingInt(ParticipationAccumulator::getParticipationCount).reversed()
+                        .thenComparing(Comparator.comparingInt(ParticipationAccumulator::getParticipationCount).reversed())
                         .thenComparing(ParticipationAccumulator::getNickname))
                 .toList();
 
@@ -168,7 +168,7 @@ public class RankingService {
                     item.getUserId(),
                     i + 1,
                     item.getNickname(),
-                    item.getCompletedCount(),      // 완주 횟수를 참가 횟수로
+                    item.getParticipationCount(),
                     item.getCompletedCount(),
                     item.getSubmitRateLabel(),
                     item.getUserId().equals(currentUserId)
