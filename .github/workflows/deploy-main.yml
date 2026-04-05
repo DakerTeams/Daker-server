@@ -13,6 +13,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
 
     steps:
       - name: Deploy to production server
@@ -50,3 +51,8 @@ jobs:
             if [ -n "$START_COMMAND" ]; then
               bash -lc "$START_COMMAND"
             fi
+
+      - name: Health check
+        if: ${{ secrets.SERVER_HEALTHCHECK_URL != '' }}
+        run: |
+          curl --fail --silent --show-error --max-time 10 "${{ secrets.SERVER_HEALTHCHECK_URL }}"
