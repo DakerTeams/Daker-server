@@ -13,7 +13,9 @@ import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
 import com.daker.global.response.PageResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,8 +35,19 @@ public class TeamService {
 
     @Transactional(readOnly = true)
     public PageResponse<TeamSummaryResponse> getTeams(Long hackathonId, Boolean isOpen, String q, Pageable pageable) {
+        Pageable sortedPageable = pageable.getSort().isSorted()
+                ? pageable
+                : PageRequest.of(
+                        pageable.getPageNumber(),
+                        pageable.getPageSize(),
+                        Sort.by(
+                                Sort.Order.desc("createdAt"),
+                                Sort.Order.desc("id")
+                        )
+                );
+
         return new PageResponse<>(
-                teamRepository.findAllWithFilters(hackathonId, isOpen, q, pageable)
+                teamRepository.findAllWithFilters(hackathonId, isOpen, q, sortedPageable)
                         .map(TeamSummaryResponse::new)
         );
     }

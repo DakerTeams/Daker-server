@@ -15,10 +15,12 @@ import com.daker.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
 
 import java.time.LocalDateTime;
@@ -138,6 +140,24 @@ class TeamServiceTest {
 
         assertThat(result.getItems()).hasSize(1);
         assertThat(result.getItems().get(0).getName()).isEqualTo("Team 1");
+    }
+
+    @Test
+    @DisplayName("팀 목록 조회 기본 정렬은 최신 등록순이다")
+    void getTeams_defaultSortByCreatedAtDesc() {
+        given(teamRepository.findAllWithFilters(any(), any(), any(), any()))
+                .willReturn(new PageImpl<>(List.of()));
+
+        teamService.getTeams(1L, true, "test", PageRequest.of(0, 20));
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(teamRepository).findAllWithFilters(eq(1L), eq(true), eq("test"), pageableCaptor.capture());
+
+        Pageable pageable = pageableCaptor.getValue();
+        assertThat(pageable.getSort().getOrderFor("createdAt")).isNotNull();
+        assertThat(pageable.getSort().getOrderFor("createdAt").isDescending()).isTrue();
+        assertThat(pageable.getSort().getOrderFor("id")).isNotNull();
+        assertThat(pageable.getSort().getOrderFor("id").isDescending()).isTrue();
     }
 
     // -------------------------------------------------------------------------
