@@ -132,9 +132,9 @@ class AdminServiceTest {
         Page<Hackathon> hackathonPage = new PageImpl<>(hackathons);
         Page<User> judgePage = new PageImpl<>(List.of(mockUser(1L, Role.JUDGE)));
 
-        given(hackathonRepository.findAll()).willReturn(hackathons);
-        given(hackathonRepository.findAll(any(Pageable.class))).willReturn(hackathonPage);
-        given(hackathonRepository.countByCreatedAtAfter(any())).willReturn(1L);
+        given(hackathonRepository.findAllByDeletedFalse()).willReturn(hackathons);
+        given(hackathonRepository.findAllByDeletedFalse(any(Pageable.class))).willReturn(hackathonPage);
+        given(hackathonRepository.countByCreatedAtAfterAndDeletedFalse(any())).willReturn(1L);
         given(teamRepository.findAllByHackathonId(anyLong())).willReturn(List.of());
         given(teamRepository.count()).willReturn(5L);
         given(teamRepository.countByCreatedAtAfter(any())).willReturn(2L);
@@ -169,7 +169,7 @@ class AdminServiceTest {
     void getHackathons_success() {
         Hackathon h = mockHackathon(1L, HackathonStatus.OPEN);
         Page<Hackathon> page = new PageImpl<>(List.of(h));
-        given(hackathonRepository.findAll(any(Pageable.class))).willReturn(page);
+        given(hackathonRepository.findAllByDeletedFalse(any(Pageable.class))).willReturn(page);
         given(teamRepository.findAllByHackathonId(anyLong())).willReturn(List.of());
 
         var result = adminService.getHackathons(PageRequest.of(0, 20));
@@ -213,12 +213,14 @@ class AdminServiceTest {
         Hackathon h = mockHackathon(1L, HackathonStatus.OPEN);
         HackathonUpdateRequest req = new HackathonUpdateRequest();
         setField(req, "title", "수정된 제목");
+        setField(req, "status", HackathonStatus.CLOSED);
 
         given(hackathonRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(h));
 
         AdminHackathonUpdateResponse result = adminService.updateHackathon(1L, req);
 
         assertThat(result.getId()).isEqualTo(1L);
+        assertThat(result.getStatus()).isEqualTo(HackathonStatus.CLOSED);
     }
 
     @Test
@@ -256,6 +258,17 @@ class AdminServiceTest {
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
                 .isEqualTo(ErrorCode.HACKATHON_NOT_FOUND);
+    }
+
+    @Test
+    @DisplayName("해커톤 소프트 삭제 성공")
+    void deleteHackathon_success() {
+        Hackathon h = mockHackathon(1L, HackathonStatus.OPEN);
+        given(hackathonRepository.findByIdAndDeletedFalse(1L)).willReturn(Optional.of(h));
+
+        adminService.deleteHackathon(1L);
+
+        assertThat(h.isDeleted()).isTrue();
     }
 
     // -------------------------------------------------------------------------

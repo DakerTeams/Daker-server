@@ -49,16 +49,16 @@ public class AdminService {
         LocalDateTime startOfWeek = LocalDateTime.now().with(java.time.DayOfWeek.MONDAY).toLocalDate().atStartOfDay();
 
         // 해커톤 통계
-        List<Hackathon> all = hackathonRepository.findAll();
+        List<Hackathon> all = hackathonRepository.findAllByDeletedFalse();
         long total = all.size();
         long active = all.stream().filter(h -> h.getStatus() == HackathonStatus.OPEN).count();
         long upcoming = all.stream().filter(h -> h.getStatus() == HackathonStatus.UPCOMING).count();
         long closed = all.stream().filter(h -> h.getStatus() == HackathonStatus.CLOSED).count();
         long ended = all.stream().filter(h -> h.getStatus() == HackathonStatus.ENDED).count();
-        long newThisMonth = hackathonRepository.countByCreatedAtAfter(startOfMonth);
+        long newThisMonth = hackathonRepository.countByCreatedAtAfterAndDeletedFalse(startOfMonth);
 
         // 해커톤 목록 (페이지네이션)
-        Page<Hackathon> hackathonPage = hackathonRepository.findAll(
+        Page<Hackathon> hackathonPage = hackathonRepository.findAllByDeletedFalse(
                 PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id")));
         List<AdminDashboardResponse.HackathonItem> items = hackathonPage.getContent().stream()
                 .map(h -> new AdminDashboardResponse.HackathonItem(h, teamRepository.findAllByHackathonId(h.getId()).size()))
@@ -116,7 +116,7 @@ public class AdminService {
 
     @Transactional(readOnly = true)
     public PageResponse<AdminHackathonResponse> getHackathons(Pageable pageable) {
-        return new PageResponse<>(hackathonRepository.findAll(pageable)
+        return new PageResponse<>(hackathonRepository.findAllByDeletedFalse(pageable)
                 .map(h -> new AdminHackathonResponse(h, teamRepository.findAllByHackathonId(h.getId()).size())));
     }
 
@@ -176,6 +176,10 @@ public class AdminService {
                 request.getAllowSolo() != null ? request.getAllowSolo() : hackathon.isAllowSolo()
         );
 
+        if (request.getStatus() != null) {
+            hackathon.updateStatus(request.getStatus());
+        }
+
         if (request.getTags() != null) {
             hackathonTagRepository.deleteAllByHackathonId(hackathonId);
             saveTags(hackathon, request.getTags());
@@ -202,6 +206,14 @@ public class AdminService {
         }
 
         return new AdminHackathonUpdateResponse(hackathon);
+    }
+
+    @Transactional
+    public void deleteHackathon(Long hackathonId) {
+        Hackathon hackathon = hackathonRepository.findByIdAndDeletedFalse(hackathonId)
+                .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
+
+        hackathon.softDelete();
     }
 
     @Transactional
