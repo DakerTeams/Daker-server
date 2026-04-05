@@ -35,9 +35,12 @@ public class HackathonController {
             @RequestParam(required = false) String tag,
             @RequestParam(required = false) String q,
             @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "0") int size,
             @RequestParam(defaultValue = "20") int limit
     ) {
-        return ApiResponse.ok(hackathonService.getHackathons(status, tag, q, PageRequest.of(page - 1, limit)));
+        int pageSize = size > 0 ? size : limit;
+        int pageIndex = Math.max(0, page - 1);
+        return ApiResponse.ok(hackathonService.getHackathons(status, tag, q, PageRequest.of(pageIndex, pageSize)));
     }
 
     @GetMapping("/{id}")
