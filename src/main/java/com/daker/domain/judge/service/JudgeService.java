@@ -10,13 +10,18 @@ import com.daker.domain.judge.domain.JudgeEvaluation;
 import com.daker.domain.judge.dto.JudgeHackathonResponse;
 import com.daker.domain.judge.dto.JudgeScoreRequest;
 import com.daker.domain.judge.dto.JudgeScoreResponse;
+import com.daker.domain.judge.dto.JudgeSubmissionResponse;
 import com.daker.domain.judge.dto.JudgeTeamsResponse;
 import com.daker.domain.judge.repository.JudgeEvaluationRepository;
+import com.daker.domain.submission.domain.Submission;
+import com.daker.domain.submission.repository.SubmissionItemRepository;
+import com.daker.domain.submission.repository.SubmissionRepository;
 import com.daker.domain.team.domain.Team;
 import com.daker.domain.user.domain.User;
 import com.daker.domain.user.repository.UserRepository;
 import com.daker.global.exception.CustomException;
 import com.daker.global.exception.ErrorCode;
+import com.daker.global.infra.S3Uploader;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,7 +37,10 @@ public class JudgeService {
     private final HackathonRepository hackathonRepository;
     private final HackathonRegistrationRepository hackathonRegistrationRepository;
     private final JudgeEvaluationRepository judgeEvaluationRepository;
+    private final SubmissionRepository submissionRepository;
+    private final SubmissionItemRepository submissionItemRepository;
     private final UserRepository userRepository;
+    private final S3Uploader s3Uploader;
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
@@ -64,14 +72,36 @@ public class JudgeService {
         List<JudgeTeamsResponse.TeamItem> teamItems = registrations.stream()
                 .map(reg -> {
                     Team team = reg.getTeam();
+                    Submission submission = submissionRepository
+                            .findByTeamIdAndHackathonIdAndIsLatestTrue(team.getId(), hackathonId)
+                            .orElse(null);
                     JudgeEvaluation evaluation = judgeEvaluationRepository
                             .findByHackathonIdAndTeamIdAndJudgeId(hackathonId, team.getId(), userId)
                             .orElse(null);
-                    return new JudgeTeamsResponse.TeamItem(team, evaluation);
+                    return new JudgeTeamsResponse.TeamItem(team, submission, evaluation);
                 })
                 .toList();
 
         return new JudgeTeamsResponse(hackathon, teamItems);
+    }
+
+    @Transactional(readOnly = true)
+    public JudgeSubmissionResponse getSubmissionForTeam(Long hackathonId, Long teamId, Long userId) {
+        if (!hackathonJudgeRepository.existsByHackathonIdAndUserId(hackathonId, userId)) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
+        if (!hackathonRegistrationRepository.existsByHackathonIdAndTeamId(hackathonId, teamId)) {
+            throw new CustomException(ErrorCode.TEAM_NOT_FOUND);
+        }
+
+        Submission submission = submissionRepository
+                .findByTeamIdAndHackathonIdAndIsLatestTrue(teamId, hackathonId)
+                .orElseThrow(() -> new CustomException(ErrorCode.SUBMISSION_NOT_FOUND));
+
+        var items = submissionItemRepository.findAllBySubmissionId(submission.getId());
+
+        return new JudgeSubmissionResponse(submission, items, s3Uploader::getFileUrl);
     }
 
     @Transactional

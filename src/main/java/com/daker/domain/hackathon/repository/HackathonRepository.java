@@ -5,6 +5,7 @@ import com.daker.domain.hackathon.domain.HackathonStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -35,4 +36,20 @@ public interface HackathonRepository extends JpaRepository<Hackathon, Long> {
     long countByStatusAndDeletedFalse(HackathonStatus status);
 
     long countByCreatedAtAfter(LocalDateTime dateTime);
+
+    @Modifying
+    @Query("UPDATE Hackathon h SET h.status = 'UPCOMING' WHERE h.deleted = false AND h.status <> 'UPCOMING' AND :now < h.registrationStartDate")
+    int updateToUpcoming(@Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("UPDATE Hackathon h SET h.status = 'OPEN' WHERE h.deleted = false AND h.status <> 'OPEN' AND :now >= h.registrationStartDate AND :now < h.registrationEndDate")
+    int updateToOpen(@Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("UPDATE Hackathon h SET h.status = 'CLOSED' WHERE h.deleted = false AND h.status <> 'CLOSED' AND :now >= h.registrationEndDate AND :now < h.endDate")
+    int updateToClosed(@Param("now") LocalDateTime now);
+
+    @Modifying
+    @Query("UPDATE Hackathon h SET h.status = 'ENDED' WHERE h.deleted = false AND h.status <> 'ENDED' AND :now >= h.endDate")
+    int updateToEnded(@Param("now") LocalDateTime now);
 }

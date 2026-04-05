@@ -3,6 +3,7 @@ package com.daker.domain.judge.dto;
 import com.daker.domain.hackathon.domain.Criteria;
 import com.daker.domain.hackathon.domain.Hackathon;
 import com.daker.domain.judge.domain.JudgeEvaluation;
+import com.daker.domain.submission.domain.Submission;
 import com.daker.domain.team.domain.Team;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -53,11 +54,11 @@ public class JudgeTeamsResponse {
 
         private static final ObjectMapper objectMapper = new ObjectMapper();
 
-        public TeamItem(Team team, JudgeEvaluation evaluation) {
+        public TeamItem(Team team, Submission submission, JudgeEvaluation evaluation) {
             this.teamId = team.getId();
             this.teamName = team.getName();
-            this.submissionId = null; // submissions 도메인 구현 후 연결
-            this.submittedAt = null;  // submissions 도메인 구현 후 연결
+            this.submissionId = submission != null ? submission.getId() : null;
+            this.submittedAt = submission != null ? submission.getSubmittedAt() : null;
 
             if (evaluation != null) {
                 this.reviewStatus = "reviewed";

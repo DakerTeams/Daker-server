@@ -23,6 +23,9 @@ public class S3Uploader {
     @Value("${cloud.aws.s3.folder}")
     private String folder;
 
+    @Value("${cloud.aws.region}")
+    private String region;
+
     /**
      * 파일을 S3에 업로드하고 저장 경로(key)를 반환합니다.
      * 실제 URL은 필요 시 bucket + region 조합으로 구성합니다.
@@ -49,5 +52,9 @@ public class S3Uploader {
         }
 
         return key;
+    }
+
+    public String getFileUrl(String key) {
+        return String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
     }
 }

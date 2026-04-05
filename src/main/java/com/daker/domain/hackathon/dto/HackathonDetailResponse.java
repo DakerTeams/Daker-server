@@ -15,6 +15,7 @@ public class HackathonDetailResponse {
     private final String organizer;
     private final HackathonStatus status;
     private final ScoreType scoreType;
+    private final boolean votingOpen;
     private final List<String> tags;
     private final LocalDateTime startDate;
     private final LocalDateTime endDate;
@@ -33,6 +34,7 @@ public class HackathonDetailResponse {
         this.organizer = hackathon.getOrganizer();
         this.status = hackathon.getStatus();
         this.scoreType = hackathon.getScoreType();
+        this.votingOpen = hackathon.isVotingOpen();
         this.tags = tags;
         this.startDate = hackathon.getStartDate();
         this.endDate = hackathon.getEndDate();
