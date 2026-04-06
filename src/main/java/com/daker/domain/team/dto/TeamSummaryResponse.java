@@ -11,7 +11,7 @@ import java.util.List;
 public class TeamSummaryResponse {
 
     private final Long id;
-    private final Long hackathonId;
+    private final String hackathonTitle;
     private final String name;
     private final String description;
     private final TeamStatus status;
@@ -26,7 +26,7 @@ public class TeamSummaryResponse {
 
     public TeamSummaryResponse(Team team) {
         this.id = team.getId();
-        this.hackathonId = team.getHackathon() != null ? team.getHackathon().getId() : null;
+        this.hackathonTitle = team.getHackathon() != null ? team.getHackathon().getTitle() : null;
         this.name = team.getName();
         this.description = team.getDescription();
         this.status = team.getStatus();

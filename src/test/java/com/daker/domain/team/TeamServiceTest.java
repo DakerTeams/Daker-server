@@ -140,6 +140,7 @@ class TeamServiceTest {
 
         assertThat(result.getItems()).hasSize(1);
         assertThat(result.getItems().get(0).getName()).isEqualTo("Team 1");
+        assertThat(result.getItems().get(0).getHackathonTitle()).isEqualTo("Test Hackathon");
     }
 
     @Test
@@ -177,6 +178,7 @@ class TeamServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("Team 1");
+        assertThat(result.get(0).getHackathonTitle()).isEqualTo("Test Hackathon");
     }
 
     // -------------------------------------------------------------------------
