@@ -46,6 +46,11 @@ public class TeamPrivateInfo {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    public void update(String contactType, String contactValue) {
+        this.contactType = contactType;
+        this.contactValue = contactValue;
+    }
+
     @Builder
     public TeamPrivateInfo(Team team, String contactType, String contactValue,
                            String internalMemo, String editToken) {

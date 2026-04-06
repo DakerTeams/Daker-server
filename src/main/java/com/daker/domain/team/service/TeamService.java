@@ -7,6 +7,7 @@ import com.daker.domain.hackathon.repository.HackathonRepository;
 import com.daker.domain.team.domain.*;
 import com.daker.domain.team.dto.*;
 import com.daker.domain.team.repository.*;
+import com.daker.domain.team.repository.TeamPrivateInfoRepository;
 import com.daker.domain.user.domain.User;
 import com.daker.domain.user.repository.UserRepository;
 import com.daker.global.exception.CustomException;
@@ -32,6 +33,7 @@ public class TeamService {
     private final HackathonRepository hackathonRepository;
     private final HackathonRegistrationRepository registrationRepository;
     private final UserRepository userRepository;
+    private final TeamPrivateInfoRepository teamPrivateInfoRepository;
 
     @Transactional(readOnly = true)
     public PageResponse<TeamSummaryResponse> getTeams(Long hackathonId, Boolean isOpen, String q, Pageable pageable) {
@@ -60,10 +62,16 @@ public class TeamService {
     }
 
     @Transactional(readOnly = true)
-    public TeamDetailResponse getTeam(Long teamId) {
+    public TeamDetailResponse getTeam(Long teamId, Long userId) {
         Team team = teamRepository.findByIdWithDetails(teamId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TEAM_NOT_FOUND));
-        return new TeamDetailResponse(team);
+
+        boolean isMember = userId != null && teamMemberRepository.existsByTeamIdAndUserId(teamId, userId);
+        TeamPrivateInfo privateInfo = isMember
+                ? teamPrivateInfoRepository.findByTeamId(teamId).orElse(null)
+                : null;
+
+        return new TeamDetailResponse(team, privateInfo);
     }
 
     @Transactional
@@ -136,7 +144,17 @@ public class TeamService {
         team.update(request.getName(), request.getDescription(), request.getIsOpen());
         team.updateMaxMemberCount(request.getMaxMemberCount());
         replacePositions(team, request.getPositions());
-        return new TeamDetailResponse(team);
+
+        if (request.getContactType() != null || request.getContactValue() != null) {
+            TeamPrivateInfo privateInfo = teamPrivateInfoRepository.findByTeamId(teamId)
+                    .orElseGet(() -> teamPrivateInfoRepository.save(
+                            TeamPrivateInfo.builder().team(team).build()
+                    ));
+            privateInfo.update(request.getContactType(), request.getContactValue());
+        }
+
+        TeamPrivateInfo privateInfo = teamPrivateInfoRepository.findByTeamId(teamId).orElse(null);
+        return new TeamDetailResponse(team, privateInfo);
     }
 
     @Transactional
