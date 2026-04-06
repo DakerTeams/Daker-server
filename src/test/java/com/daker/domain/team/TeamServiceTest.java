@@ -30,6 +30,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
+import static org.mockito.Mockito.atLeastOnce;
 
 @ExtendWith(MockitoExtension.class)
 class TeamServiceTest {
@@ -43,6 +44,7 @@ class TeamServiceTest {
     @Mock private HackathonRepository hackathonRepository;
     @Mock private HackathonRegistrationRepository registrationRepository;
     @Mock private UserRepository userRepository;
+    @Mock private com.daker.domain.team.repository.TeamPrivateInfoRepository teamPrivateInfoRepository;
 
     // -------------------------------------------------------------------------
     // 헬퍼
@@ -259,10 +261,74 @@ class TeamServiceTest {
         TeamUpdateRequest req = mockUpdateRequest();
 
         given(teamRepository.findById(1L)).willReturn(Optional.of(team));
+        given(teamPrivateInfoRepository.findByTeamId(1L)).willReturn(Optional.empty());
 
         TeamDetailResponse response = teamService.updateTeam(1L, req, 1L);
 
         assertThat(response.getName()).isEqualTo("Updated Name");
+    }
+
+    @Test
+    @DisplayName("팀 수정 시 연락 수단 저장")
+    void updateTeam_saveContact() {
+        Hackathon h = mockOpenHackathon();
+        User leader = mockUser(1L);
+        Team team = mockTeam(1L, h, leader);
+        TeamUpdateRequest req = mockUpdateRequest();
+        setField(req, "contactType", "KAKAO");
+        setField(req, "contactValue", "https://open.kakao.com/test");
+
+        com.daker.domain.team.domain.TeamPrivateInfo privateInfo =
+                com.daker.domain.team.domain.TeamPrivateInfo.builder()
+                        .team(team).contactType("KAKAO").contactValue("https://open.kakao.com/test").build();
+
+        given(teamRepository.findById(1L)).willReturn(Optional.of(team));
+        given(teamPrivateInfoRepository.findByTeamId(1L))
+                .willReturn(Optional.empty())
+                .willReturn(Optional.of(privateInfo));
+        given(teamPrivateInfoRepository.save(any())).willReturn(privateInfo);
+
+        TeamDetailResponse response = teamService.updateTeam(1L, req, 1L);
+
+        verify(teamPrivateInfoRepository, atLeastOnce()).save(any());
+        assertThat(response.getContact()).isNotNull();
+        assertThat(response.getContact().getType()).isEqualTo("KAKAO");
+    }
+
+    @Test
+    @DisplayName("팀 상세 조회 - 팀원이면 contact 포함")
+    void getTeam_memberSeesContact() {
+        Hackathon h = mockOpenHackathon();
+        User leader = mockUser(1L);
+        Team team = mockTeam(1L, h, leader);
+
+        com.daker.domain.team.domain.TeamPrivateInfo privateInfo =
+                com.daker.domain.team.domain.TeamPrivateInfo.builder()
+                        .team(team).contactType("KAKAO").contactValue("https://open.kakao.com/test").build();
+
+        given(teamRepository.findByIdWithDetails(1L)).willReturn(Optional.of(team));
+        given(teamMemberRepository.existsByTeamIdAndUserId(1L, 1L)).willReturn(true);
+        given(teamPrivateInfoRepository.findByTeamId(1L)).willReturn(Optional.of(privateInfo));
+
+        TeamDetailResponse response = teamService.getTeam(1L, 1L);
+
+        assertThat(response.getContact()).isNotNull();
+        assertThat(response.getContact().getValue()).isEqualTo("https://open.kakao.com/test");
+    }
+
+    @Test
+    @DisplayName("팀 상세 조회 - 비팀원이면 contact null")
+    void getTeam_nonMemberNoContact() {
+        Hackathon h = mockOpenHackathon();
+        User leader = mockUser(1L);
+        Team team = mockTeam(1L, h, leader);
+
+        given(teamRepository.findByIdWithDetails(1L)).willReturn(Optional.of(team));
+        given(teamMemberRepository.existsByTeamIdAndUserId(1L, 99L)).willReturn(false);
+
+        TeamDetailResponse response = teamService.getTeam(1L, 99L);
+
+        assertThat(response.getContact()).isNull();
     }
 
     @Test

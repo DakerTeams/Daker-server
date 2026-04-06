@@ -3,6 +3,7 @@ package com.daker.domain.team.dto;
 import com.daker.domain.team.domain.Team;
 import com.daker.domain.team.domain.TeamMember;
 import com.daker.domain.team.domain.TeamMemberRole;
+import com.daker.domain.team.domain.TeamPrivateInfo;
 import com.daker.domain.team.domain.TeamStatus;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
@@ -27,10 +28,11 @@ public class TeamDetailResponse {
     private final TeamSummaryResponse.LeaderInfo leader;
     private final List<MemberInfo> members;
     private final List<TeamSummaryResponse.PositionInfo> positions;
+    private final ContactInfo contact;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
-    public TeamDetailResponse(Team team) {
+    public TeamDetailResponse(Team team, TeamPrivateInfo privateInfo) {
         this.id = team.getId();
         this.hackathonId = team.getHackathon() != null ? team.getHackathon().getId() : null;
         this.name = team.getName();
@@ -45,8 +47,24 @@ public class TeamDetailResponse {
         this.positions = team.getPositions().stream()
                 .map(p -> new TeamSummaryResponse.PositionInfo(p.getPositionName(), p.getRequiredCount()))
                 .toList();
+        this.contact = privateInfo != null ? new ContactInfo(privateInfo.getContactType(), privateInfo.getContactValue()) : null;
         this.createdAt = team.getCreatedAt();
         this.updatedAt = team.getUpdatedAt();
+    }
+
+    public TeamDetailResponse(Team team) {
+        this(team, null);
+    }
+
+    @Getter
+    public static class ContactInfo {
+        private final String type;
+        private final String value;
+
+        public ContactInfo(String type, String value) {
+            this.type = type;
+            this.value = value;
+        }
     }
 
     @Getter

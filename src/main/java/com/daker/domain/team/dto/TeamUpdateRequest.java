@@ -16,4 +16,8 @@ public class TeamUpdateRequest {
     private Integer maxMemberCount;
 
     private List<TeamPositionRequest> positions;
+
+    private String contactType;
+
+    private String contactValue;
 }

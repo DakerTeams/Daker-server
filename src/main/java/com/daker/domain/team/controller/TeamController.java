@@ -37,8 +37,11 @@ public class TeamController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<TeamDetailResponse> getTeam(@PathVariable Long id) {
-        return ApiResponse.ok(teamService.getTeam(id));
+    public ApiResponse<TeamDetailResponse> getTeam(
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.ok(teamService.getTeam(id, userId));
     }
 
     @PostMapping
