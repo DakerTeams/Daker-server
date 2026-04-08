@@ -78,7 +78,7 @@ public class HackathonService {
                 .orElseThrow(() -> new CustomException(ErrorCode.HACKATHON_NOT_FOUND));
 
         return teamRepository.findAllByUserId(userId).stream()
-                .filter(t -> t.getHackathon().getId().equals(hackathonId))
+                .filter(t -> t.getHackathon() != null && t.getHackathon().getId().equals(hackathonId))
                 .findFirst()
                 .flatMap(t -> registrationRepository.findByTeamId(t.getId()))
                 .map(RegistrationStatusResponse::new)
