@@ -61,9 +61,9 @@ public class TeamService {
                     if (hackathonId == null) {
                         return true;
                     }
-                    // 독립 팀(어디든 등록 가능) 또는 해당 해커톤에 이미 묶인 팀만 노출
-                    return team.getHackathon() == null
-                            || hackathonId.equals(team.getHackathon().getId());
+                    // 해커톤에 묶인 팀은 createTeam 시점에 이미 등록 완료 상태이므로
+                    // 참가 신청 모달의 후보는 독립 팀(hackathon == null)만 노출
+                    return team.getHackathon() == null;
                 })
                 .map(TeamSummaryResponse::new)
                 .toList();
