@@ -73,6 +73,7 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(
                 "http://localhost:5173",
+                "http://localhost:5174",
                 "https://daker-front-pfygbaonz-sd-gifs-projects.vercel.app",
                 "https://daker-front.vercel.app",
                 "https://15-164-250-113.sslip.io"
