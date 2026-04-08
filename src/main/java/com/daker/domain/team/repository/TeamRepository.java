@@ -34,12 +34,16 @@ public interface TeamRepository extends JpaRepository<Team, Long> {
 
     // 내가 팀장이거나 멤버인 팀 목록
     @Query("SELECT t FROM Team t " +
-           "WHERE t.leader.id = :userId " +
-           "OR EXISTS (SELECT tm FROM TeamMember tm WHERE tm.team = t AND tm.user.id = :userId)")
+           "WHERE t.status != com.daker.domain.team.domain.TeamStatus.DELETED " +
+           "AND (t.leader.id = :userId " +
+           "  OR EXISTS (SELECT tm FROM TeamMember tm WHERE tm.team = t AND tm.user.id = :userId))")
     List<Team> findAllByUserId(@Param("userId") Long userId);
 
     // 해커톤 내 팀 목록 (리더보드용)
-    List<Team> findAllByHackathonId(Long hackathonId);
+    @Query("SELECT t FROM Team t " +
+           "WHERE t.status != com.daker.domain.team.domain.TeamStatus.DELETED " +
+           "AND t.hackathon.id = :hackathonId")
+    List<Team> findAllByHackathonId(@Param("hackathonId") Long hackathonId);
 
     boolean existsByHackathonIdAndLeaderId(Long hackathonId, Long leaderId);
 
