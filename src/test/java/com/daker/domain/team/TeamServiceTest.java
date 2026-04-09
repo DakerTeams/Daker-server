@@ -176,7 +176,7 @@ class TeamServiceTest {
 
         given(teamRepository.findAllByUserId(1L)).willReturn(List.of(team));
 
-        List<TeamSummaryResponse> result = teamService.getMyTeams(1L);
+        List<TeamSummaryResponse> result = teamService.getMyTeams(1L, null);
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getName()).isEqualTo("Team 1");
