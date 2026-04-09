@@ -32,8 +32,11 @@ public class TeamController {
     }
 
     @GetMapping("/me")
-    public ApiResponse<List<TeamSummaryResponse>> getMyTeams(@AuthenticationPrincipal Long userId) {
-        return ApiResponse.ok(teamService.getMyTeams(userId));
+    public ApiResponse<List<TeamSummaryResponse>> getMyTeams(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) Long hackathonId
+    ) {
+        return ApiResponse.ok(teamService.getMyTeams(userId, hackathonId));
     }
 
     @GetMapping("/{id}")

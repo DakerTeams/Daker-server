@@ -101,6 +101,11 @@ public class HackathonService {
             throw new CustomException(ErrorCode.NOT_TEAM_LEADER);
         }
 
+        // 팀이 이미 다른 해커톤에 묶여 있으면 차단 (DB UNIQUE(team_id) 위반 방지)
+        if (team.getHackathon() != null && !team.getHackathon().getId().equals(hackathonId)) {
+            throw new CustomException(ErrorCode.ALREADY_APPLIED);
+        }
+
         if (registrationRepository.existsByHackathonIdAndTeamId(hackathonId, team.getId())) {
             throw new CustomException(ErrorCode.ALREADY_APPLIED);
         }

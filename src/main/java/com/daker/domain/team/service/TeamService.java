@@ -55,8 +55,16 @@ public class TeamService {
     }
 
     @Transactional(readOnly = true)
-    public List<TeamSummaryResponse> getMyTeams(Long userId) {
+    public List<TeamSummaryResponse> getMyTeams(Long userId, Long hackathonId) {
         return teamRepository.findAllByUserId(userId).stream()
+                .filter(team -> {
+                    if (hackathonId == null) {
+                        return true;
+                    }
+                    // 해커톤에 묶인 팀은 createTeam 시점에 이미 등록 완료 상태이므로
+                    // 참가 신청 모달의 후보는 독립 팀(hackathon == null)만 노출
+                    return team.getHackathon() == null;
+                })
                 .map(TeamSummaryResponse::new)
                 .toList();
     }
