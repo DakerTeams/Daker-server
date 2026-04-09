@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.*;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class TeamServiceTest {
@@ -64,6 +65,23 @@ class TeamServiceTest {
                 .maxTeamSize(3)
                 .build();
         setField(h, "id", 1L);
+        return h;
+    }
+
+    private Hackathon mockUpcomingHackathon() {
+        Hackathon h = Hackathon.builder()
+                .title("Upcoming Hackathon")
+                .description("desc")
+                .organizer("org")
+                .status(HackathonStatus.UPCOMING)
+                .scoreType(ScoreType.SCORE)
+                .startDate(LocalDateTime.now().plusDays(7))
+                .endDate(LocalDateTime.now().plusDays(10))
+                .registrationStartDate(LocalDateTime.now().minusDays(1))
+                .registrationEndDate(LocalDateTime.now().plusDays(5))
+                .maxTeamSize(3)
+                .build();
+        setField(h, "id", 3L);
         return h;
     }
 
@@ -352,9 +370,9 @@ class TeamServiceTest {
     // -------------------------------------------------------------------------
 
     @Test
-    @DisplayName("팀 삭제 성공")
-    void deleteTeam_success() {
-        Hackathon h = mockOpenHackathon();
+    @DisplayName("시작 전 해커톤의 팀은 하드 딜리트")
+    void deleteTeam_upcomingHackathonHardDeletes() {
+        Hackathon h = mockUpcomingHackathon();
         User leader = mockUser(1L);
         Team team = mockTeam(1L, h, leader);
 
@@ -364,12 +382,30 @@ class TeamServiceTest {
         teamService.deleteTeam(1L, 1L);
 
         verify(teamApplicationRepository).deleteAllByTeamId(1L);
+        verify(teamPrivateInfoRepository).deleteByTeamId(1L);
+        verify(teamRepository).delete(team);
     }
 
     @Test
-    @DisplayName("접수 기간이 아닌 경우 팀 삭제 불가")
-    void deleteTeam_registrationClosed() {
-        Hackathon h = mockClosedHackathon();
+    @DisplayName("독립 팀(해커톤 미연결)은 하드 딜리트")
+    void deleteTeam_independentTeamHardDeletes() {
+        User leader = mockUser(1L);
+        Team team = mockTeam(1L, null, leader);
+
+        given(teamRepository.findById(1L)).willReturn(Optional.of(team));
+        given(registrationRepository.findByTeamId(1L)).willReturn(Optional.empty());
+
+        teamService.deleteTeam(1L, 1L);
+
+        verify(teamApplicationRepository).deleteAllByTeamId(1L);
+        verify(teamPrivateInfoRepository).deleteByTeamId(1L);
+        verify(teamRepository).delete(team);
+    }
+
+    @Test
+    @DisplayName("진행 중인 해커톤의 팀은 삭제 자체가 금지")
+    void deleteTeam_ongoingHackathonForbidden() {
+        Hackathon h = mockOpenHackathon(); // start: -1d, end: +7d (진행 중)
         User leader = mockUser(1L);
         Team team = mockTeam(1L, h, leader);
 
@@ -378,7 +414,26 @@ class TeamServiceTest {
         assertThatThrownBy(() -> teamService.deleteTeam(1L, 1L))
                 .isInstanceOf(CustomException.class)
                 .extracting(e -> ((CustomException) e).getErrorCode())
-                .isEqualTo(ErrorCode.TEAM_APPLICATION_CLOSED);
+                .isEqualTo(ErrorCode.TEAM_DELETE_FORBIDDEN_ONGOING);
+
+        verify(teamRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("종료된 해커톤의 팀은 소프트 딜리트만 가능")
+    void deleteTeam_endedHackathonSoftDeletes() {
+        Hackathon h = mockClosedHackathon();
+        User leader = mockUser(1L);
+        Team team = mockTeam(1L, h, leader);
+
+        given(teamRepository.findById(1L)).willReturn(Optional.of(team));
+
+        teamService.deleteTeam(1L, 1L);
+
+        verify(teamApplicationRepository).deleteAllByTeamId(1L);
+        verify(teamRepository, never()).delete(any());
+        assertThat(team.getStatus()).isEqualTo(TeamStatus.DELETED);
+        assertThat(team.getDeletedAt()).isNotNull();
     }
 
     // -------------------------------------------------------------------------

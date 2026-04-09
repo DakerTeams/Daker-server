@@ -16,7 +16,9 @@ import java.util.Optional;
 public interface TeamRepository extends JpaRepository<Team, Long> {
 
     @EntityGraph(attributePaths = {"positions"})
-    @Query("SELECT t FROM Team t WHERE t.id = :id")
+    @Query("SELECT t FROM Team t " +
+           "WHERE t.id = :id " +
+           "AND t.status != com.daker.domain.team.domain.TeamStatus.DELETED")
     Optional<Team> findByIdWithDetails(@Param("id") Long id);
 
     // 팀 목록: hackathonId / isOpen / 키워드 필터

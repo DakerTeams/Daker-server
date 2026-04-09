@@ -51,6 +51,7 @@ public enum ErrorCode {
     ALREADY_APPLIED(HttpStatus.CONFLICT, "이미 합류 신청한 팀입니다."),
     APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "신청 정보를 찾을 수 없습니다."),
     TEAM_APPLICATION_CLOSED(HttpStatus.BAD_REQUEST, "마감 후 팀 신청/합류가 불가합니다."),
+    TEAM_DELETE_FORBIDDEN_ONGOING(HttpStatus.BAD_REQUEST, "진행 중인 해커톤의 팀은 삭제할 수 없습니다."),
 
     // 심사 (SCORE)
     JUDGE_ONLY(HttpStatus.FORBIDDEN, "심사위원 권한이 필요합니다."),

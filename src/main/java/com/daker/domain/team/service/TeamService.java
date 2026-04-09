@@ -174,16 +174,26 @@ public class TeamService {
             throw new CustomException(ErrorCode.NOT_TEAM_LEADER);
         }
 
-        if (team.getHackathon() != null && team.getHackathon().isEnded()) {
-            throw new CustomException(ErrorCode.TEAM_APPLICATION_CLOSED);
+        Hackathon hackathon = team.getHackathon();
+
+        // 진행 중인 해커톤의 팀은 삭제 자체를 금지
+        if (hackathon != null && hackathon.isOngoing() && !hackathon.isEnded()) {
+            throw new CustomException(ErrorCode.TEAM_DELETE_FORBIDDEN_ONGOING);
         }
 
-        teamApplicationRepository.deleteAllByTeamId(teamId);
+        // 종료된 해커톤의 팀은 결과 데이터 보존을 위해 소프트 딜리트만 허용
+        if (hackathon != null && hackathon.isEnded()) {
+            teamApplicationRepository.deleteAllByTeamId(teamId);
+            team.softDelete();
+            return;
+        }
 
+        // 그 외(독립 팀 또는 시작 전 해커톤 팀): 하드 딜리트
+        teamApplicationRepository.deleteAllByTeamId(teamId);
+        teamPrivateInfoRepository.deleteByTeamId(teamId);
         registrationRepository.findByTeamId(teamId)
                 .ifPresent(registrationRepository::delete);
-
-        team.softDelete();
+        teamRepository.delete(team);
     }
 
     @Transactional

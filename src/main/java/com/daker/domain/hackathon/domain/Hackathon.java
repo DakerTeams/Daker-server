@@ -139,6 +139,11 @@ public class Hackathon {
         return LocalDateTime.now().isAfter(endDate);
     }
 
+    public boolean isOngoing() {
+        LocalDateTime now = LocalDateTime.now();
+        return !now.isBefore(startDate) && !now.isAfter(endDate);
+    }
+
     public boolean isVotingOpen() {
         if (submissionDeadlineAt == null) return false;
         LocalDateTime now = LocalDateTime.now();
