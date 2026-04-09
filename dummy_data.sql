@@ -1,15 +1,27 @@
 -- ============================================================
 -- DAKER 전체 더미데이터 스크립트 (개선판)
--- 기준일: 2026-04-05
--- 비밀번호: password
--- 개선 사항:
---   - 유저 12명 (admin, judge1, judge2, user1-9)
---   - 팀 18개 (H1-H6 각 3팀)
---   - judge_evaluations scores_json 포맷 수정: [점수1, 점수2, ...]
---   - judge2 추가 및 H1/H3 복수 심사
---   - H3 제출물에 파일(fileName) 포함 (심사위원 다운로드 테스트용)
---   - AWARD_3RD XP 추가 (3위팀 200XP)
---   - 투표 데이터 보강 (팀당 6표 이상)
+-- 기준일: 2026-04-05  (시간은 SHIFT 블록이 NOW() 기준으로 자동 정렬)
+-- 비밀번호: password   (BCrypt 해시 통일, 모든 시드 유저 공통)
+-- ============================================================
+-- ⚠️ 적용 시 반드시 utf8mb4 클라이언트 charset 사용
+--    클라이언트가 latin1로 동작하면 한글이 byte 길이로 계산되어
+--    varchar 컬럼 제한을 초과하거나 데이터가 깨질 수 있습니다.
+--
+--    docker exec -i daker-mysql \
+--        mysql --default-character-set=utf8mb4 -udaker -pdaker1234 daker \
+--        < dummy_data.sql
+--
+-- 적용 흐름:
+--   1) 백엔드를 한 번 부팅해 ddl-auto가 teams.deleted_at 컬럼을 생성
+--   2) 위 명령으로 dummy_data.sql 적용
+--   3) (선택) SEEDER_ENABLED=true ./gradlew bootRun 한 번 → 유저 80명까지 부풀리기
+--   4) 평소 모드(./gradlew bootRun)로 재기동
+--
+-- 주요 분포 (시간 시프트 후):
+--   - 유저 20명 (admin 1 / judge 2 / user 17) → 시더 활성 시 80명
+--   - 해커톤 30개: ENDED·CLOSED(진행중)·OPEN·UPCOMING 골고루
+--   - 팀 59개, 모든 해커톤이 description 200자 내외 + criteria 4개
+--   - 엣지 케이스: 만석 팀, 소프트 딜리트 팀, PENDING/REJECTED 신청
 -- ============================================================
 SET NAMES utf8mb4;
 SET character_set_client = utf8mb4;
@@ -28,6 +40,8 @@ CREATE TABLE IF NOT EXISTS user_tags (
     CONSTRAINT fk_utag_tag FOREIGN KEY (tag_id) REFERENCES tags(id)
 );
 
+TRUNCATE TABLE chat_messages;
+TRUNCATE TABLE chat_participants;
 TRUNCATE TABLE user_xp_history;
 TRUNCATE TABLE user_tags;
 TRUNCATE TABLE votes;
@@ -1374,3 +1388,281 @@ ALTER TABLE hackathons               AUTO_INCREMENT = 31;
 ALTER TABLE tags                     AUTO_INCREMENT = 69;
 ALTER TABLE teams                    AUTO_INCREMENT = 60;
 ALTER TABLE submissions              AUTO_INCREMENT = 23;
+
+-- ============================================================
+-- 22. teams.deleted_at 컬럼 안내
+-- 이 컬럼은 Spring Boot 부팅 시 ddl-auto: update가 자동으로 추가합니다.
+-- (MySQL 8.0은 ALTER TABLE ... ADD COLUMN IF NOT EXISTS 미지원)
+-- 만약 백엔드를 한 번도 띄우지 않은 상태라면 dummy_data.sql 적용 전에
+-- ./gradlew bootRun 으로 한 번 부팅해서 컬럼을 생성해두세요.
+-- ============================================================
+
+-- ============================================================
+-- 23. 엣지 케이스: 만석 팀 (Alpha Team을 정원=현재로 만들기)
+-- ============================================================
+UPDATE teams SET max_member_count = 2 WHERE id = 1;
+
+-- ============================================================
+-- 24. 엣지 케이스: 소프트 딜리트된 종료 해커톤 팀
+-- ThemeForge(team 41, H17/ENDED) — 종료 후 본인이 삭제한 케이스
+-- 정책상 종료 해커톤 팀은 소프트 딜리트만 가능하므로 status=DELETED + deleted_at
+-- 본인 참가이력에는 노출되지만 상세/리더보드/카운트에서는 제외됨을 검증하는 시드
+-- ============================================================
+UPDATE teams SET status = 'DELETED', deleted_at = '2025-12-08 10:00:00' WHERE id = 41;
+
+-- ============================================================
+-- 25. 엣지 케이스: 다양한 신청 상태 (PENDING / REJECTED)
+-- 기존 시드는 거의 ACCEPTED만 있어 모집 중 화면이 단조로움
+-- ============================================================
+INSERT INTO team_applications (team_id, user_id, message, position, status, processed_by_user_id, created_at, processed_at) VALUES
+(13, 4,  '코드 리뷰 도구에 관심 많습니다. 합류 가능할까요?',  'LLM 엔지니어', 'PENDING',  NULL, '2026-04-08 10:00:00', NULL),
+(14, 5,  'LangChain 기반 RAG 파이프라인 구축 경험 있습니다.', '백엔드',       'PENDING',  NULL, '2026-04-08 11:00:00', NULL),
+(16, 9,  '핀테크 도메인은 처음이지만 빠르게 익히겠습니다.',    '프론트엔드',   'REJECTED', 6,    '2026-04-07 09:00:00', '2026-04-07 12:00:00'),
+(25, 10, '장애인 이동 편의 프로젝트에 기여하고 싶습니다.',     'AI/ML',        'PENDING',  NULL, '2026-04-06 14:00:00', NULL),
+(26, 4,  '독거노인 케어 서비스에 백엔드로 참여하고 싶습니다.', '백엔드',       'PENDING',  NULL, '2026-04-07 10:00:00', NULL);
+
+-- ============================================================
+-- 26. 채팅 데이터 (chat_participants / chat_messages)
+-- supplement.sql에서 가치 있는 데이터만 흡수 (ID는 AUTO_INCREMENT 위임)
+-- ============================================================
+INSERT INTO chat_participants (hackathon_id, user_id, joined_at) VALUES
+(7,  4,  '2026-03-25 10:30:00'),
+(7,  5,  '2026-03-25 11:00:00'),
+(7,  13, '2026-03-25 12:00:00'),
+(7,  14, '2026-03-26 09:00:00'),
+(7,  15, '2026-03-27 10:00:00'),
+(13, 11, '2026-03-31 10:00:00'),
+(13, 12, '2026-03-31 11:00:00'),
+(13, 14, '2026-03-31 12:00:00'),
+(13, 20, '2026-04-01 09:00:00'),
+(14, 9,  '2026-04-01 10:00:00'),
+(14, 7,  '2026-04-01 11:00:00'),
+(14, 16, '2026-04-01 12:00:00'),
+(14, 17, '2026-04-01 13:00:00');
+
+INSERT INTO chat_messages (hackathon_id, user_id, content, created_at) VALUES
+(7,  4,  '안녕하세요! 그린테크 해커톤 참가자 여러분~',                '2026-03-25 10:35:00'),
+(7,  5,  '반갑습니다. 팀원 모집 중이신 분 계신가요?',                  '2026-03-25 11:05:00'),
+(7,  13, '저희 팀은 프론트엔드 개발자 모집 중입니다',                  '2026-03-25 12:10:00'),
+(7,  14, '탄소 절감 관련 아이디어 있으신 분 연락주세요',               '2026-03-26 09:15:00'),
+(7,  15, '태양광 모니터링 앱 같이 하실 분 계신가요',                   '2026-03-27 10:20:00'),
+(7,  4,  '다들 파이팅, 좋은 결과 있기를 바랍니다',                     '2026-03-28 14:00:00'),
+(13, 11, '소셜임팩트 해커톤 시작됐네요. 반갑습니다',                   '2026-03-31 10:05:00'),
+(13, 12, '저희 팀은 디지털 소외계층 지원 서비스 개발 예정입니다',      '2026-03-31 11:10:00'),
+(13, 14, 'AI/ML 개발자 찾고 있어요',                                   '2026-03-31 12:15:00'),
+(13, 20, '기획자인데 팀 합류 가능할까요?',                             '2026-04-01 09:30:00'),
+(13, 11, '물론이죠. 쪽지 주세요',                                      '2026-04-01 10:00:00'),
+(14, 9,  '클라우드 해커톤 참가자 모여라',                              '2026-04-01 10:10:00'),
+(14, 7,  'K8s 관련 프로젝트 하시는 분 계신가요',                       '2026-04-01 11:15:00'),
+(14, 16, 'DevOps 경력자 우대 모집 중입니다',                           '2026-04-01 12:20:00'),
+(14, 17, '서버리스 아키텍처에 관심 있으신 분들 환영해요',               '2026-04-01 13:05:00'),
+(14, 9,  '다들 좋은 아이디어로 좋은 결과 내봐요',                      '2026-04-02 09:00:00'),
+(7,  15, '그린테크 파이팅',                                            '2026-04-02 10:00:00');
+
+-- ============================================================
+-- 27. ⏰ 시간 시프트 — 모든 datetime을 실행 시점 기준으로 자동 정렬
+-- 원본 기준일: 2026-04-05
+-- 매번 SQL을 다시 실행할 때 NOW() 기준으로 분포가 항상 의미 있게 유지됨
+-- (HackathonStatusScheduler가 매분 status를 시간 기반으로 자동 갱신하므로
+--  status 컬럼은 직접 손대지 않아도 곧 정합 상태가 됨)
+-- ============================================================
+SET @shift_days := DATEDIFF(CURDATE(), '2026-04-05');
+
+UPDATE users
+   SET created_at = created_at + INTERVAL @shift_days DAY,
+       updated_at = updated_at + INTERVAL @shift_days DAY;
+
+UPDATE hackathons
+   SET start_date              = start_date              + INTERVAL @shift_days DAY,
+       end_date                = end_date                + INTERVAL @shift_days DAY,
+       registration_start_date = registration_start_date + INTERVAL @shift_days DAY,
+       registration_end_date   = registration_end_date   + INTERVAL @shift_days DAY,
+       submission_deadline_at  = CASE WHEN submission_deadline_at IS NOT NULL
+                                      THEN submission_deadline_at + INTERVAL @shift_days DAY END,
+       closed_at               = CASE WHEN closed_at IS NOT NULL
+                                      THEN closed_at + INTERVAL @shift_days DAY END,
+       created_at              = created_at + INTERVAL @shift_days DAY,
+       updated_at              = updated_at + INTERVAL @shift_days DAY;
+
+UPDATE milestones              SET date = date + INTERVAL @shift_days DAY;
+UPDATE hackathon_judges        SET assigned_at = assigned_at + INTERVAL @shift_days DAY;
+
+UPDATE teams
+   SET created_at = created_at + INTERVAL @shift_days DAY,
+       updated_at = updated_at + INTERVAL @shift_days DAY,
+       deleted_at = CASE WHEN deleted_at IS NOT NULL
+                         THEN deleted_at + INTERVAL @shift_days DAY END;
+
+UPDATE team_private_infos
+   SET created_at = created_at + INTERVAL @shift_days DAY,
+       updated_at = updated_at + INTERVAL @shift_days DAY;
+
+UPDATE team_members            SET joined_at = joined_at + INTERVAL @shift_days DAY;
+
+UPDATE team_applications
+   SET created_at   = created_at + INTERVAL @shift_days DAY,
+       processed_at = CASE WHEN processed_at IS NOT NULL
+                           THEN processed_at + INTERVAL @shift_days DAY END;
+
+UPDATE hackathon_registrations SET registered_at = registered_at + INTERVAL @shift_days DAY;
+
+UPDATE submissions
+   SET submitted_at = submitted_at + INTERVAL @shift_days DAY,
+       created_at   = created_at   + INTERVAL @shift_days DAY,
+       updated_at   = updated_at   + INTERVAL @shift_days DAY;
+
+UPDATE judge_evaluations
+   SET created_at = created_at + INTERVAL @shift_days DAY,
+       updated_at = updated_at + INTERVAL @shift_days DAY;
+
+UPDATE votes                   SET voted_at = voted_at + INTERVAL @shift_days DAY;
+UPDATE user_xp_history         SET earned_at = earned_at + INTERVAL @shift_days DAY;
+UPDATE chat_participants       SET joined_at = joined_at + INTERVAL @shift_days DAY;
+UPDATE chat_messages           SET created_at = created_at + INTERVAL @shift_days DAY;
+
+-- ============================================================
+-- 28. 대회 개요(description) 보강 — 200자 내외로 재작성
+-- summary는 목록용 한 줄 설명으로 그대로 두고, 상세 페이지에 노출되는
+-- description을 6~8문장(약 200자)으로 풍부하게 확장
+-- ============================================================
+UPDATE hackathons SET description = 'AI 기술로 차세대 스타트업 아이디어를 72시간 안에 프로토타입으로 구현하는 해커톤입니다. 머신러닝, 자연어 처리, 컴퓨터 비전 등 다양한 AI 분야를 활용해 사회 문제나 비즈니스 기회를 풀어내는 혁신 서비스를 만들어보세요. 분야별 멘토링과 투자자 피칭 세션이 함께 진행되며, 우수팀에게는 후속 투자 연계 기회와 인큐베이팅 프로그램 입주 기회가 제공됩니다.' WHERE id = 1;
+UPDATE hackathons SET description = 'Meta Quest와 HoloLens 같은 최신 XR 기기를 직접 다루며 현실과 가상의 경계를 허무는 48시간 메타버스 챌린지입니다. 교육, 엔터테인먼트, 협업, 커머스 등 다양한 영역에서 몰입감 있는 XR 경험을 설계하고 구현해보세요. 기기 무료 대여, Unity·Unreal 엔진 라이선스, 분야별 멘토가 지원되며, 참가자 투표로 수상팀이 결정됩니다.' WHERE id = 2;
+UPDATE hackathons SET description = '공공데이터 포털의 다양한 데이터셋을 활용해 사회 문제를 해결하는 데이터 사이언스 경진대회입니다. 교통, 복지, 환경, 경제 등 분야별 공공데이터를 분석해 의미 있는 인사이트를 도출하고, 통계 모델 또는 머신러닝 모델로 검증합니다. 1인 참가도 가능하며 Python·R·Jupyter 환경이 사전 제공됩니다. 발표는 데이터 기반 스토리텔링 중심으로 평가됩니다.' WHERE id = 3;
+UPDATE hackathons SET description = 'iOS와 Android를 모두 아우르는 크로스플랫폼 모바일 앱을 48시간 안에 완성하는 해커톤입니다. Flutter, React Native, Swift, Kotlin 등 자유로운 기술 스택으로 일상의 불편함을 해소하는 앱을 개발하세요. 실제 기기에서 동작하는 빌드를 제출해야 하며, 사용자 경험과 디자인 완성도를 중심으로 참가자 투표를 통해 수상팀이 가려집니다.' WHERE id = 4;
+UPDATE hackathons SET description = 'GPT, Claude 등 최신 대형 언어 모델(LLM)을 자유롭게 활용해 실제 문제를 해결하는 혁신 서비스를 만드는 해커톤입니다. 프롬프트 엔지니어링, RAG, 에이전트 워크플로우 등 최신 LLM 기법을 적용해 기업과 개인의 생산성을 극대화하는 AI 서비스를 개발합니다. OpenAI·Anthropic API 크레딧이 팀당 지원되며, 데모데이에서 실제 서비스 시연을 진행합니다.' WHERE id = 5;
+UPDATE hackathons SET description = '블록체인, 오픈뱅킹 API, 결제 기술을 활용해 차세대 핀테크 서비스를 만드는 챌린지입니다. 송금, 자산 관리, 투자, 보험 등 금융 전 분야에서 사용자 경험을 혁신할 아이디어를 구현해보세요. 금융위원회 규정 준수 솔루션에는 추가 가점이 주어지며, 보안과 사용자 편의성을 균형 있게 갖춘 팀이 우대됩니다. 실제 금융사 PoC 연계 기회도 제공됩니다.' WHERE id = 6;
+UPDATE hackathons SET description = '기후 변화 대응을 위한 친환경 기술 솔루션을 개발하는 그린테크 해커톤입니다. 탄소 감축, 신재생 에너지, 스마트 그리드, 자원 순환 등 환경 문제를 기술로 해결할 수 있는 아이디어를 구체적인 서비스로 구현합니다. 현장 참여 필수이며 숙박과 식사가 무료 제공됩니다. 환경 임팩트와 실현 가능성을 중심으로 참가자 투표를 통해 우수팀을 선정합니다.' WHERE id = 7;
+UPDATE hackathons SET description = '디지털 헬스케어 기술로 의료 접근성을 높이는 헬스케어 이노베이션 해커톤입니다. 원격 진료, 웨어러블 데이터 분석, AI 진단 보조, 환자 케어 챗봇 등 의료 현장의 실질적 문제를 해결하는 서비스를 개발하세요. 의료법 관련 규정 준수가 평가 항목에 포함되며, 임상 전문가 멘토링과 의료 데이터셋이 제공됩니다. 환자와 의료진 모두를 고려한 UX가 핵심입니다.' WHERE id = 8;
+UPDATE hackathons SET description = 'IoT 센서와 빅데이터 분석으로 더 스마트한 도시 인프라를 구축하는 해커톤입니다. 교통, 에너지, 안전, 환경, 시민 참여 등 도시 운영의 다양한 영역에서 데이터 기반 솔루션을 설계하고 구현합니다. 서울시 열린데이터광장과 부산 빅데이터 플랫폼 API가 무료 제공되며, 실제 도시 문제 해결력과 공공데이터 활용도가 핵심 평가 지표가 됩니다.' WHERE id = 9;
+UPDATE hackathons SET description = '실전형 CTF와 보안 솔루션 개발을 병행하는 사이버보안 종합 챌린지입니다. 웹·시스템·네트워크·암호 등 다양한 분야의 취약점을 분석하고, 발견한 취약점에 대한 방어 솔루션까지 함께 구현합니다. 모든 분석은 지정된 샌드박스 환경에서만 수행해야 하며, 취약점의 심각도와 보고서 품질, 방어 코드의 완성도가 종합적으로 평가됩니다.' WHERE id = 10;
+UPDATE hackathons SET description = 'EVM 기반 스마트 컨트랙트와 DeFi, NFT 기술을 활용해 탈중앙화 서비스를 48시간 안에 구현하는 웹3 해커톤입니다. Solidity, Rust(Anchor), Move 등 자유로운 언어로 dApp을 개발하고 Sepolia 또는 Mumbai 테스트넷에 배포해야 합니다. 메인넷 배포는 선택 사항이며, 실질적 탈중앙화 구현 여부와 사용자 경험을 함께 평가합니다.' WHERE id = 11;
+UPDATE hackathons SET description = 'AI와 데이터 기술로 교육의 미래를 바꾸는 에듀테크 챌린지입니다. 개인 맞춤 학습, 학습 분석, 교육 접근성, 교사 지원 도구 등 교육 현장의 다양한 문제를 기술로 해결하는 서비스를 개발합니다. 현장 참여 필수이며 숙박·식사가 제공됩니다. 학습 효과를 입증할 수 있는 데이터 또는 사용자 테스트 결과가 우대되며, 참가자 투표로 수상팀이 결정됩니다.' WHERE id = 12;
+UPDATE hackathons SET description = '기술로 사회 문제를 해결하는 임팩트 있는 서비스를 개발하는 해커톤입니다. 환경, 복지, 교육 불평등, 사회적 약자 지원 등 사회적 가치를 중심으로 평가하며, 기술적 완성도보다 사회적 임팩트의 크기와 지속 가능성을 우선합니다. 우수팀에게는 사회적기업 인큐베이팅 프로그램 입주와 후속 임팩트 투자 연계 기회가 제공됩니다.' WHERE id = 13;
+UPDATE hackathons SET description = 'Docker, Kubernetes, 서비스 메시 등 클라우드 네이티브 기술 스택을 활용해 확장 가능한 서비스를 설계·배포하는 챌린지입니다. 마이크로서비스 아키텍처, CI/CD 파이프라인, 관측성, 무중단 배포 등 현대적 운영 역량을 종합적으로 검증합니다. AWS·GCP·Azure 크레딧이 팀당 제공되며, 참가자 투표로 우수팀을 선정합니다.' WHERE id = 14;
+UPDATE hackathons SET description = 'HuggingFace 모델 허브를 활용해 텍스트 데이터에서 인사이트를 추출하는 NLP 경진대회입니다. 감성 분석, 개체명 인식, 문서 분류, 질의응답 등 NLP 핵심 과제를 다루며 자체 데이터셋도 자유롭게 활용할 수 있습니다. 1인 참가도 가능하며 사전 학습 모델 기반의 파인튜닝 전략과 모델 성능, 분석 깊이가 종합적으로 평가됩니다.' WHERE id = 15;
+UPDATE hackathons SET description = 'GitHub Actions, Jenkins, Terraform, Ansible 등 다양한 도구를 활용해 CI/CD 파이프라인과 인프라 자동화를 구축하는 DevOps 챌린지입니다. 자동화된 배포, 인프라 코드, 모니터링·알림 체계, 무중단 롤백 시나리오까지 종합적으로 평가됩니다. 1인 참가가 가능하며, 참가자 투표로 가장 효율적이고 안정적인 솔루션이 선정됩니다.' WHERE id = 16;
+UPDATE hackathons SET description = 'Figma와 React를 활용해 재사용 가능한 디자인 시스템을 구축하는 해커톤입니다. 컴포넌트 라이브러리, 디자인 토큰, 다크/라이트 테마, 접근성 가이드라인을 포함한 완성도 높은 시스템을 설계하고 코드와 문서까지 함께 산출해야 합니다. 디자인 일관성과 컴포넌트 완성도, 접근성 준수 수준이 종합적으로 평가됩니다.' WHERE id = 17;
+UPDATE hackathons SET description = '협업 필터링과 딥러닝 기반 추천 시스템을 구현하는 경진대회입니다. MovieLens, Amazon 리뷰 등 공개 데이터셋을 활용해 개인화 추천 모델을 개발하며, NDCG·Hit Rate 등 표준 지표로 객관적으로 평가됩니다. 콜드 스타트 문제, 다양성, 설명 가능성 등 추천 시스템의 핵심 난제를 어떻게 풀어내는지가 핵심 평가 기준입니다.' WHERE id = 18;
+UPDATE hackathons SET description = 'MLflow, Kubeflow, Airflow 등을 활용해 ML 모델의 학습부터 배포·모니터링까지 End-to-End 파이프라인을 구축하는 MLOps 챌린지입니다. 재현 가능한 실험 환경, 데이터·모델 버전 관리, 자동화된 학습·배포 워크플로우를 모두 갖춰야 합니다. 운영 환경에서의 안정성과 재현성, 자동화 수준이 평가의 핵심입니다.' WHERE id = 19;
+UPDATE hackathons SET description = 'Whisper, ElevenLabs, Coqui TTS 등 최신 음성 AI 모델을 활용해 음성 기반 서비스를 개발하는 해커톤입니다. 음성 인식, 음성 합성, 화자 분리, 실시간 번역 등 다양한 음성 기술을 조합해 기존에 없던 새로운 사용자 경험을 만들어보세요. 참가자 투표를 통해 가장 자연스럽고 유용한 서비스가 수상팀으로 선정됩니다.' WHERE id = 20;
+UPDATE hackathons SET description = 'YOLO, SAM, CLIP 등 최신 비전 모델을 활용해 실제 산업 문제를 해결하는 컴퓨터 비전 챌린지입니다. 이미지 인식, 객체 탐지, 세그멘테이션, 자세 추정 등 다양한 비전 과제를 다루며, 1인 참가가 가능합니다. 모델 정확도뿐 아니라 실제 산업 현장에 적용 가능한 응용성과 추론 효율성도 함께 평가됩니다.' WHERE id = 21;
+UPDATE hackathons SET description = 'WCAG 2.1 기준을 충족하는 접근성 높은 웹 서비스를 만드는 해커톤입니다. 시각·청각·운동 장애를 가진 사용자도 불편 없이 사용할 수 있는 UI/UX와 보조 기술 호환성을 함께 구현해야 합니다. 자동화 검사 도구와 실제 장애인 사용자 테스트를 거쳐 평가되며, 참가자 투표로 가장 포용적인 서비스가 선정됩니다.' WHERE id = 22;
+UPDATE hackathons SET description = 'p5.js와 Processing으로 예술과 코딩의 경계를 허무는 작품을 만드는 크리에이티브 코딩 해커톤입니다. 제너러티브 아트, 인터랙티브 설치 미술, 데이터 시각화 아트워크 등 코드로 표현하는 창작물을 자유롭게 만들어보세요. 1인 참가가 가능하며, 작품의 창의성과 시각적 완성도, 기술적 표현력이 종합적으로 평가됩니다.' WHERE id = 23;
+UPDATE hackathons SET description = 'CARLA 시뮬레이터 환경에서 자율주행 알고리즘을 구현하고 평가하는 시뮬레이션 대회입니다. 경로 계획, 장애물 회피, 신호 인식, 주차 등 자율주행의 핵심 모듈을 직접 개발하고 다양한 시나리오에서 검증합니다. 안전성과 알고리즘 성능, 시뮬레이션 결과의 재현성이 핵심 평가 기준이며 현장 캠프 형식으로 진행됩니다.' WHERE id = 24;
+UPDATE hackathons SET description = '인기 오픈소스 프로젝트의 이슈를 직접 해결하고 PR을 제출하며 기여 경험을 쌓는 컨트리뷰톤입니다. 멘토가 코드 리뷰와 메인테이너 커뮤니케이션을 도와주며, 머지된 PR의 임팩트와 코드 품질, 리뷰 대응력이 평가됩니다. 1인 참가가 가능하고 기여 경험이 부족한 분도 환영하며, 참가자 투표로 우수 기여자를 선정합니다.' WHERE id = 25;
+UPDATE hackathons SET description = 'Raspberry Pi, Jetson Nano, Coral 같은 엣지 디바이스에서 AI 추론을 최적화하는 엣지 AI 해커톤입니다. 모델 양자화, 프루닝, 지식 증류, 컴파일러 최적화 등의 기법을 활용해 제한된 자원에서도 실시간 추론이 가능한 시스템을 구축합니다. 추론 속도, 모델 크기, 정확도 유지의 균형이 핵심 평가 지표가 됩니다.' WHERE id = 26;
+UPDATE hackathons SET description = 'Spark, Kafka, Flink 등 대규모 데이터 처리 도구를 활용해 안정적인 데이터 파이프라인을 구축하는 챌린지입니다. 실시간 스트리밍, 배치 처리, 데이터 레이크 구축, 데이터 품질 검증까지 데이터 엔지니어링 전 영역을 다룹니다. 처리량과 안정성, 운영 효율, 장애 복구 시나리오가 종합적으로 평가됩니다.' WHERE id = 27;
+UPDATE hackathons SET description = '카카오맵, 공공데이터, OpenWeather, 환율 API 등 다양한 공공·민간 API를 매시업해 새로운 가치를 창출하는 해커톤입니다. 단순 호출이 아니라 여러 API를 조합해 기존에 없던 사용자 경험을 만들어내는 창의력이 핵심입니다. 참가자 투표를 통해 가장 독창적이고 유용한 매시업 서비스가 수상팀으로 선정됩니다.' WHERE id = 28;
+UPDATE hackathons SET description = 'Unity 또는 Unreal Engine으로 48시간 안에 플레이 가능한 게임 한 편을 완성하는 게임 잼입니다. 행사 시작 시점에 발표되는 테마에 따라 기획부터 그래픽, 사운드, 프로그래밍까지 모두 직접 수행해야 합니다. 무료 아트 에셋 라이브러리가 제공되며, 게임성·완성도·창의성이 종합적으로 평가됩니다.' WHERE id = 29;
+UPDATE hackathons SET description = 'ROS2 기반 로봇 제어와 자율주행 알고리즘을 구현하는 로보틱스 챌린지입니다. 시뮬레이션 환경에서 알고리즘을 개발한 뒤 최종일에는 실제 로봇으로 미션을 수행해야 하며, 환경 인식, 경로 계획, 모션 제어, 에러 복구까지 종합적인 로봇 제어 역량이 검증됩니다. 캠프 형식으로 진행되며 ROS2 멘토가 상시 지원합니다.' WHERE id = 30;
+
+-- ============================================================
+-- 29. 평가 기준(criteria) 보강 — 누락된 21개 해커톤에 4개씩 추가
+-- VOTE 타입에도 동일하게 추가하여 모든 해커톤이 최소 4개 보유
+-- ============================================================
+INSERT INTO criteria (hackathon_id, name, description, max_score) VALUES
+-- H2 XR 메타버스 (VOTE)
+(2, '몰입감',         'XR 기기에서 체감되는 몰입의 깊이',                    30),
+(2, '기술 완성도',    'XR 인터랙션 및 렌더링 구현 수준',                     30),
+(2, '창의성',         '독창적인 발상과 표현 방식',                           30),
+(2, '발표력',         '시연 및 Q&A 대응',                                    10),
+-- H4 모바일 앱 (VOTE)
+(4, '사용자 경험',    '실제 사용 시 편의성과 직관성',                        35),
+(4, '기술 완성도',    '실기기 동작 안정성 및 코드 품질',                     30),
+(4, '시장성',         '잠재 사용자층과 비즈니스 모델',                       25),
+(4, '발표력',         '데모 시연 품질',                                      10),
+-- H7 그린테크 (VOTE)
+(7, '환경 임팩트',    '탄소 감축 또는 환경 개선 정량 효과',                  35),
+(7, '기술 완성도',    '서비스 구현 및 안정성',                               30),
+(7, '지속 가능성',    '운영 지속 가능성 및 확장성',                          25),
+(7, '발표력',         '발표 명확성 및 설득력',                               10),
+-- H12 에듀테크 (VOTE)
+(12, '학습 효과',     '실제 학습 향상 효과를 입증할 수 있는지',              35),
+(12, '기술 완성도',   '서비스 구현 및 안정성',                               25),
+(12, '사용자 경험',   '학습자 및 교사 UX',                                   30),
+(12, '발표력',        '발표 및 시연 품질',                                   10),
+-- H14 클라우드 네이티브 (VOTE)
+(14, '아키텍처 설계', '마이크로서비스 및 클라우드 네이티브 설계 수준',       30),
+(14, '확장성',        '수평 확장 및 무중단 배포 구현',                       30),
+(14, '운영 효율',     '관측성 및 자동화 구성',                               30),
+(14, '발표력',        '데모 및 Q&A 대응',                                    10),
+-- H15 NLP 텍스트 마이닝 (SCORE)
+(15, 'NLP 활용도',    '사전 학습 모델 및 NLP 기법 활용의 적절성',            30),
+(15, '모델 성능',     '정량 지표(F1, 정확도 등) 기준 성능',                  35),
+(15, '분석 깊이',     '결과 해석 및 인사이트 도출 수준',                     25),
+(15, '발표력',        '데이터 기반 스토리텔링',                              10),
+-- H16 DevOps 자동화 (VOTE)
+(16, '자동화 수준',   'CI/CD 및 인프라 자동화 범위',                         35),
+(16, '안정성',        '롤백 및 장애 대응 시나리오',                          30),
+(16, '효율성',        '빌드·배포 시간 및 리소스 효율',                       25),
+(16, '발표력',        '시연 및 Q&A 대응',                                    10),
+-- H17 디자인 시스템 (SCORE)
+(17, '디자인 일관성', '컴포넌트와 토큰의 일관성',                            30),
+(17, '컴포넌트 완성도','재사용성과 API 설계 품질',                           30),
+(17, '접근성',        'WCAG 가이드라인 준수 수준',                           30),
+(17, '발표력',        '문서 및 발표 품질',                                   10),
+-- H18 추천 시스템 (SCORE)
+(18, '모델 성능',     'NDCG 및 Hit Rate 기준 성능',                          40),
+(18, '추천 정확도',   '실제 사용 시 추천 만족도',                            25),
+(18, '시스템 설계',   '학습·서빙 파이프라인 설계',                           25),
+(18, '발표력',        '결과 해석 및 발표 품질',                              10),
+-- H19 MLOps 파이프라인 (SCORE)
+(19, '파이프라인 설계','학습·배포·모니터링 전 단계 구성',                    35),
+(19, '재현성',        '실험 재현성 및 데이터·모델 버전 관리',                30),
+(19, '자동화',        '워크플로우 자동화 수준',                              25),
+(19, '발표력',        '시연 및 발표 품질',                                   10),
+-- H20 음성 AI (VOTE)
+(20, '음성 처리 정확도','STT/TTS 품질 및 실시간성',                          35),
+(20, '사용성',        '실제 사용 시 자연스러움과 편의성',                    30),
+(20, '응용 영역',     '새로운 사용자 경험 창출 정도',                        25),
+(20, '발표력',        '데모 시연 품질',                                      10),
+-- H21 컴퓨터 비전 (SCORE)
+(21, '모델 정확도',   '객체 탐지·분류 등 정량 지표',                         40),
+(21, '응용성',        '실제 산업 현장 적용 가능성',                          25),
+(21, '기술 완성도',   '추론 효율 및 시스템 통합',                            25),
+(21, '발표력',        '결과 발표 및 시연',                                   10),
+-- H22 웹 접근성 (VOTE)
+(22, 'WCAG 준수도',   '자동화 검사 및 수동 검증 결과',                       35),
+(22, '사용성',        '보조 기술 사용자 테스트 결과',                        30),
+(22, '기술 구현',     '접근성 구현의 기술적 완성도',                         25),
+(22, '발표력',        '발표 및 시연 품질',                                   10),
+-- H23 크리에이티브 코딩 (SCORE)
+(23, '창의성',        '독창적 발상 및 표현',                                 35),
+(23, '시각적 완성도', '결과물의 시각적 완성도',                              30),
+(23, '기술 표현력',   '코드를 통한 표현의 정교함',                           25),
+(23, '발표력',        '작품 설명 및 시연',                                   10),
+-- H24 자율주행 시뮬레이션 (SCORE)
+(24, '알고리즘 성능', '경로 계획 및 제어 알고리즘 품질',                     35),
+(24, '안전성',        '충돌 회피 및 안전 운행 지표',                         30),
+(24, '시뮬레이션 결과','다양한 시나리오에서의 성공률',                       25),
+(24, '발표력',        '결과 발표 및 시연',                                   10),
+-- H25 오픈소스 컨트리뷰톤 (VOTE)
+(25, 'PR 품질',       '코드 품질 및 머지 가능성',                            35),
+(25, '기여 임팩트',   '프로젝트에 미친 실질적 임팩트',                       30),
+(25, '코드 리뷰 대응','메인테이너 리뷰에 대한 대응력',                       25),
+(25, '발표력',        '기여 과정 발표',                                      10),
+-- H26 Edge AI (SCORE)
+(26, '추론 속도',     '엣지 디바이스 상의 실시간성',                         35),
+(26, '모델 경량화',   '양자화·프루닝 등 경량화 기법 적용 수준',              30),
+(26, '정확도 유지',   '경량화 이후 정확도 손실 최소화',                      25),
+(26, '발표력',        '결과 발표 및 시연',                                   10),
+-- H27 데이터 엔지니어링 (SCORE)
+(27, '파이프라인 설계','데이터 파이프라인 아키텍처 품질',                    35),
+(27, '처리량',        '대용량 데이터 처리 성능',                             25),
+(27, '안정성',        '장애 복구 및 데이터 품질 검증',                       30),
+(27, '발표력',        '결과 발표 및 시연',                                   10),
+-- H28 API 이코노미 (VOTE)
+(28, '매시업 창의성', 'API 조합의 독창성',                                   35),
+(28, '서비스 완성도', '실제 동작하는 서비스의 완성도',                       30),
+(28, '사용성',        '사용자가 체감하는 가치',                              25),
+(28, '발표력',        '데모 시연 품질',                                      10),
+-- H29 게임 개발 잼 (SCORE)
+(29, '게임성',        '재미와 플레이 경험',                                  35),
+(29, '완성도',        '버그 없이 끝까지 플레이 가능한 수준',                 30),
+(29, '창의성',        '테마 해석 및 독창성',                                 25),
+(29, '발표력',        '시연 및 발표 품질',                                   10),
+-- H30 로보틱스 (SCORE)
+(30, '로봇 제어',     '환경 인식과 모션 제어의 정밀도',                      30),
+(30, '미션 수행',     '실제 미션 성공률 및 시간',                            35),
+(30, '알고리즘',      '경로 계획 및 의사결정 알고리즘',                      25),
+(30, '발표력',        '결과 발표 및 시연',                                   10);
