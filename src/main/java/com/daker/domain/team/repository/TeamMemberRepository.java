@@ -16,9 +16,12 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
 
     boolean existsByTeamIdAndUserId(Long teamId, Long userId);
 
-    // 해당 해커톤에 이미 팀원으로 속해있는지 확인
+    // 해당 해커톤에 이미 팀원으로 속해있는지 확인 (탈퇴/삭제된 팀 제외)
     @Query("SELECT COUNT(tm) > 0 FROM TeamMember tm " +
-           "WHERE tm.user.id = :userId AND tm.team.hackathon.id = :hackathonId")
+           "WHERE tm.user.id = :userId " +
+           "AND tm.team.hackathon.id = :hackathonId " +
+           "AND tm.leftAt IS NULL " +
+           "AND tm.team.status <> com.daker.domain.team.domain.TeamStatus.DELETED")
     boolean existsByUserIdAndHackathonId(
             @Param("userId") Long userId,
             @Param("hackathonId") Long hackathonId
