@@ -23,6 +23,8 @@ public class TeamDetailResponse {
     private final boolean isOpen;
     @JsonProperty("isPublic")
     private final boolean isPublic;
+    @JsonProperty("isDeleted")
+    private final boolean isDeleted;
     private final int currentMemberCount;
     private final int maxMemberCount;
     private final TeamSummaryResponse.LeaderInfo leader;
@@ -40,6 +42,7 @@ public class TeamDetailResponse {
         this.status = team.getStatus();
         this.isOpen = team.isOpen();
         this.isPublic = team.isPublic();
+        this.isDeleted = team.getDeletedAt() != null;
         this.currentMemberCount = team.getCurrentMemberCount();
         this.maxMemberCount = team.getMaxMemberCount();
         this.leader = new TeamSummaryResponse.LeaderInfo(team.getLeader().getId(), team.getLeader().getNickname());

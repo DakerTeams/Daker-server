@@ -7,4 +7,6 @@ import java.util.Optional;
 
 public interface TeamPrivateInfoRepository extends JpaRepository<TeamPrivateInfo, Long> {
     Optional<TeamPrivateInfo> findByTeamId(Long teamId);
+
+    void deleteByTeamId(Long teamId);
 }
