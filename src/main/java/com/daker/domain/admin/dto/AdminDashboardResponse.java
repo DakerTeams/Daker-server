@@ -45,15 +45,15 @@ public class AdminDashboardResponse {
         private final String title;
         private final HackathonStatus status;
         private final int numOfTeams;
-        private final int numOfSubmissions;
+        private final long numOfSubmissions;
         private final LocalDateTime submissionDeadlineAt;
 
-        public HackathonItem(Hackathon hackathon, int numOfTeams) {
+        public HackathonItem(Hackathon hackathon, int numOfTeams, long numOfSubmissions) {
             this.id = hackathon.getId();
             this.title = hackathon.getTitle();
             this.status = hackathon.getStatus();
             this.numOfTeams = numOfTeams;
-            this.numOfSubmissions = 0; // TODO: 제출 도메인 개발 후 연결
+            this.numOfSubmissions = numOfSubmissions;
             this.submissionDeadlineAt = hackathon.getSubmissionDeadlineAt();
         }
     }

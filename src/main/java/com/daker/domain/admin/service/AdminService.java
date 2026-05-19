@@ -61,7 +61,10 @@ public class AdminService {
         Page<Hackathon> hackathonPage = hackathonRepository.findAllByDeletedFalse(
                 PageRequest.of(page - 1, limit, Sort.by(Sort.Direction.DESC, "id")));
         List<AdminDashboardResponse.HackathonItem> items = hackathonPage.getContent().stream()
-                .map(h -> new AdminDashboardResponse.HackathonItem(h, teamRepository.findAllByHackathonId(h.getId()).size()))
+                .map(h -> new AdminDashboardResponse.HackathonItem(
+                        h,
+                        teamRepository.findAllByHackathonId(h.getId()).size(),
+                        submissionRepository.countByHackathonIdAndIsLatestTrue(h.getId())))
                 .toList();
 
         // 팀 통계

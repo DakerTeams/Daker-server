@@ -136,6 +136,7 @@ class AdminServiceTest {
         given(hackathonRepository.findAllByDeletedFalse(any(Pageable.class))).willReturn(hackathonPage);
         given(hackathonRepository.countByCreatedAtAfterAndDeletedFalse(any())).willReturn(1L);
         given(teamRepository.findAllByHackathonId(anyLong())).willReturn(List.of());
+        given(submissionRepository.countByHackathonIdAndIsLatestTrue(anyLong())).willReturn(2L);
         given(teamRepository.count()).willReturn(5L);
         given(teamRepository.countByCreatedAtAfter(any())).willReturn(2L);
         given(userRepository.count()).willReturn(10L);
@@ -151,6 +152,7 @@ class AdminServiceTest {
         assertThat(result.getHackathons().getUpcoming()).isEqualTo(1);
         assertThat(result.getHackathons().getEnded()).isEqualTo(1);
         assertThat(result.getHackathons().getNewThisMonth()).isEqualTo(1);
+        assertThat(result.getHackathons().getHackathonList().getItems().get(0).getNumOfSubmissions()).isEqualTo(2);
         assertThat(result.getParticipatedTeams().getTotal()).isEqualTo(5);
         assertThat(result.getParticipatedTeams().getNewThisWeek()).isEqualTo(2);
         assertThat(result.getUsers().getTotal()).isEqualTo(10);

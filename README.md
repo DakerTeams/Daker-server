@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./docs/images/daker-overview.png" alt="Daker 플랫폼 개요" width="100%" />
+  <img src="./docs/images/daker-banner.png" alt="DAKER - 해커톤 플랫폼" width="100%" />
 </p>
 
 <p align="center">
@@ -67,26 +67,9 @@ Daker-server는 해커톤 주최자, 참가자, 심사위원, 관리자가 사�
 
 ## 시스템 아키텍처
 
-```mermaid
-flowchart LR
-    Client["Client<br/>(Web Frontend)"]
-
-    subgraph App["Spring Boot Application"]
-        direction TB
-        Controller["Controller Layer"]
-        Service["Service Layer"]
-        Repository["Repository<br/>JPA + QueryDSL"]
-        Domain["Domain / Entity"]
-        Global["Global<br/>Security(JWT) · Config<br/>Exception · Scheduler"]
-        Controller --> Service --> Repository --> Domain
-    end
-
-    Client -- "REST API / WebSocket" --> Controller
-    Repository --> MySQL[("MySQL")]
-    Repository --> Redis[("Redis")]
-    Service --> S3[("AWS S3")]
-    Service --> OAuth["GitHub OAuth"]
-```
+<p align="center">
+  <img src="./docs/images/system-architecture.png" alt="Daker 시스템 아키텍처" width="100%" />
+</p>
 
 도메인별로 패키지를 분리하고, 각 도메인은 `controller -> service -> repository -> domain` 계층 구조를 따릅니다. 공통 관심사는 `global` 패키지에 모아 인증, 설정, 예외 처리, 공통 응답, 외부 인프라 연동을 담당합니다.
 
@@ -94,23 +77,9 @@ flowchart LR
 
 ## 배포 아키텍처
 
-```mermaid
-flowchart LR
-    Dev["Developer"] -- "push" --> GH["GitHub<br/>(main branch)"]
-    GH --> GA["GitHub Actions<br/>Test · Build JAR<br/>Build Image · Push"]
-    GA --> DH["Docker Hub<br/>seodongbe/hackathon-daker:latest"]
-    GA -- "SSH Deploy" --> EC2
-
-    subgraph EC2["Production Server (EC2)"]
-        Compose["Docker Compose"] --> AppC["App Container"]
-    end
-
-    DH -- "pull image" --> EC2
-    AppC --> MySQL[("MySQL")]
-    AppC --> Redis[("Redis")]
-    AppC --> S3[("AWS S3")]
-    GA -. "Health Check /stats" .-> AppC
-```
+<p align="center">
+  <img src="./docs/images/deployment-architecture.png" alt="Daker 배포 아키텍처" width="100%" />
+</p>
 
 `main` 브랜치에 변경 사항이 반영되면 GitHub Actions가 JAR를 빌드하고 Docker 이미지를 생성해 Docker Hub에 푸시합니다. 이후 운영 서버에 SSH로 접속해 최신 이미지를 pull하고 `docker-compose.prod.yml` 기준으로 애플리케이션 컨테이너를 재기동합니다.
 
